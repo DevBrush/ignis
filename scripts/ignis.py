@@ -25,7 +25,6 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 
-import glob
 import os
 import http.server
 import re
@@ -39,30 +38,196 @@ PORT = 9999
 
 
 class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        path = self.translate_path(self.path)
+        if os.path.isdir(path):
+            if os.path.isfile(path + "index.html"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path + "index.html", "rb").read())
+            elif os.path.isfile(path + "index.htm"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path + "index.htm", "rb").read())
+            else:
+                self.send_response(404, "File not found")
+                return None
+        elif not re.search("\..*$", self.path):
+            if os.path.isfile(path + ".html"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path + ".html", "rb").read())
+            elif os.path.isfile(path + ".htm"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path + ".html", "rb").read())
+            else:
+                self.send_response(404, "File not found")
+                return None
+        elif os.path.isfile(path):
+            self.send_response(200)
+            self.send_header("Content-type", self.guess_type(self.path))
+            self.end_headers()
+            self.wfile.write(open(path, "rb").read())
+        else:
+            self.send_response(404, "File not found")
+            return None
+        return
+
     def log_message(self, format, *args):
         pass
 
 
-class MyTCPServer(socketserver.TCPServer):
+class HandleTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 
-def get_files(path):
+def get_files(input_path, output_path):
     file_list = []
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(input_path):
         if root[-1] == "/":
             root = root[: -1]
-        if re.search("(/\.)", root) is None:
+        if re.search("(/\.)", root) is None and output_path not in root:
             for f in files:
                 file_list.append(root + "/" + f)
     return file_list
 
 
+def handle_files(input_files, input_path, output_path, verbose):
+    for f in input_files:
+        file_content = b""
+        input_file = open(f, "rb")
+        if verbose:
+            print("Reading " + f)
+        input_content = input_file.read()
+        file_content = input_content
+        input_content = input_content.replace(b"\r\n", b"\n")
+        if verbose:
+            print("Checking " + f + " for header values")
+        header_vars, is_header = get_header(f, input_content)
+        if "@ISTEMPLATE" not in header_vars:
+            if is_header:
+                tmp_output_path = output_path
+                tmp_input_path = input_path
+                tmp_template_root_path = input_path
+                tmp_template_path = header_vars[b"%TEMPLATE"].decode("utf-8")
+                if tmp_output_path[-1] != "/":
+                    tmp_output_path += "/"
+                if tmp_template_root_path[-1] != "/":
+                    tmp_template_root_path += "/"
+                if tmp_input_path[0] == "/":
+                    tmp_input_path = tmp_input_path[1:]
+                if tmp_template_path[0] == "/":
+                    tmp_template_path = tmp_template_path[1:]
+                tmp_input_path = f[len(tmp_input_path) + 2:]
+                template_path = (tmp_template_root_path + tmp_template_path)
+                template_file = open(template_path, "rb")
+                template_content = template_file.read()
+                template_content = template_content[12:]
+                pointer = 0
+                if verbose:
+                    print("Building " + tmp_output_path +
+                          tmp_input_path)
+                while True:
+                    pointer_start = template_content[pointer:].find(b"[!-")
+                    if pointer_start >= 0:
+                        pointer_end = template_content[
+                            pointer + pointer_start:].find(b"-!]")
+                        if pointer_end >= 0:
+                            replaced_content = template_content[
+                                pointer + pointer_start: + pointer +
+                                pointer_start + pointer_end + 3]
+                            template_content = template_content.replace(
+                                replaced_content, handle_replace(
+                                    header_vars, replaced_content))
+                            pointer += pointer_start + pointer_end + 3
+                        else:
+                            break
+                    else:
+                        break
+                file_content = template_content
+            tmp_output_path = output_path
+            tmp_input_path = input_path
+            if tmp_output_path[-1] != "/":
+                tmp_output_path += "/"
+            if tmp_input_path[0] == "/":
+                tmp_input_path = tmp_input_path[1:]
+            tmp_input_path = f[len(tmp_input_path) + 2:]
+            os.makedirs(tmp_output_path + "/".join(
+                tmp_input_path.split("/")[: -1]), 0o755, True)
+            write_file = open(tmp_output_path + tmp_input_path, "wb")
+            if verbose:
+                print("Writing " + tmp_output_path + tmp_input_path)
+            write_file.write(file_content)
+    if verbose:
+        print("")
+
+
+def handle_replace(header_vars, replaced_content):
+    final_content = b""
+    replaced_content = replaced_content.replace(b"[!-", b"")
+    replaced_content = replaced_content.replace(b"-!]", b"")
+    replaced_content = replaced_content.replace(b" ", b"")
+    if replaced_content in header_vars:
+        final_content = header_vars[replaced_content]
+    while final_content[-1] == ord(b"\n"):
+        final_content = final_content[: -1]
+    return final_content
+
+
+def get_header(file_path, content):
+    header_vars = {}
+    header_content = b""
+    is_content_file = False
+    if content.find(b"!-template-!") == 0:
+        header_vars["@ISTEMPLATE"] = True
+        return header_vars, is_content_file
+    start = content.find(b"!-header\n")
+    if start == 0:
+        end = content[start:].find(b"\n-!\n")
+        if end >= 0:
+            header_content = content[9: end]
+            for var in header_content.split(b"\n"):
+                if var != b"":
+                    header_vars[b"@FILEPATH"] = os.path.abspath(file_path)
+                    key_end = var.find(b"=")
+                    if key_end < 0:
+                        print("ignis: incorrectly formatted header line " +
+                              var.decode("utf-8") + " in " +
+                              os.path.abspath(file_path))
+                        sys.exit(7)
+                    if not re.match(b"^[A-Za-z0-9_-]*$", var[: key_end]):
+                        if var[: key_end] != b"%TEMPLATE":
+                            print("ignis: invalid header value name " +
+                                  var[: key_end].decode("utf-8") + " in " +
+                                  os.path.abspath(file_path))
+                            sys.exit(8)
+                    header_vars[var[: key_end]] = var[key_end + 1:]
+            if b"%TEMPLATE" not in header_vars:
+                print("ignis: %TEMPLATE required as a header line in " +
+                      os.path.abspath(file_path))
+                sys.exit(9)
+            is_content_file = True
+            content = content[end + 4:]
+            while content[0] == ord(b"\n"):
+                content = content[1:]
+            header_vars[b"@CONTENT"] = content
+        else:
+            print("ignis: header section in " + os.path.abspath(file_path) +
+                  " must end with -!")
+            sys.exit(6)
+    return header_vars, is_content_file
+
+
 # Starts a HTTP server at HOST:PORT with the root directory being path
 def handle_http(path):
-    global HOST
     os.chdir(path)
-    server = socketserver.TCPServer((HOST, PORT), HTTPRequestHandler)
+    global HOST
+    server = HandleTCPServer((HOST, PORT), HTTPRequestHandler)
     message = ""
     if HOST == "0.0.0.0":
         message = " (Open to LAN)"
@@ -76,12 +241,11 @@ def handle_http(path):
 
 
 def help_print():
-    print("Usage: ignis [ OPTIONS ]... [ -t <file> ] [ -i <path=\"./\"> ] " +
-          "[ -o <path> ]\n\n Required:\n" +
+    print("Usage: ignis [ OPTIONS ]... [ -i <path=\"./\"> ] " +
+          "[ -o <path=\"__website__\"> ] \n\n Required:\n" +
           "  -i, --input  <path>      Input path of website content\n" +
           "  -o, --output  <path>     Output path for finished static " +
-          "website\n" +
-          "  -t, --template <file>    Template HTML file\n\n" +
+          "website\n\n" +
           " Options:\n"
           "  -h, --help               Print Help (this message) and exit\n" +
           "  -L, --LAN                Open test server up to local network\n"
@@ -91,10 +255,10 @@ def help_print():
           "building\n"
           "  -v, --version            Print version information and exit\n\n" +
           " Examples:\n" +
-          "  ignis -t template.html -i content/text -o example-site\n" +
-          "  ignis --verbose -t template/template.html -o example-site\n" +
-          "  ignis -V -T -L -t template/template.html -o example-site\n" +
-          "  ignis -VTL -t template/template.html -o example-site")
+          "  ignis -i path/to/files -o path/for/website\n" +
+          "  ignis --verbose -o example-site\n" +
+          "  ignis -V -T -L -o example-site\n" +
+          "  ignis -VTL")
 
 
 def version_print():
@@ -105,12 +269,12 @@ def main():
     global HOST
     help_flag = False
     version_flag = False
-    template_flag = False
-    output_flag = False
+    verbose_flag = False
     http_flag = False
     lan_flag = False
+    verbose = False
     input_path = "."
-    output_path = ""
+    output_path = "__website__"
     args = sys.argv[1:]
     x = 0
     while x < len(sys.argv[1:]):
@@ -123,6 +287,8 @@ def main():
                 http_flag = True
             elif args[x][2:] == "LAN":
                 lan_flag = True
+            elif args[x][2:] == "verbose":
+                verbose_flag = True
             elif args[x][2:] == "input":
                 if len(args) > x + 1:
                     input_path = args[x + 1]
@@ -134,7 +300,6 @@ def main():
                     sys.exit(2)
             elif args[x][2:] == "output":
                 if len(args) > x + 1:
-                    output_flag = True
                     output_path = args[x + 1]
                     x += 1
                     break
@@ -155,6 +320,8 @@ def main():
                     version_flag = True
                 elif y == "T":
                     http_flag = True
+                elif y == "V":
+                    verbose_flag = True
                 elif y == "L":
                     lan_flag = True
                 elif len(y) == 1 and y == "i":
@@ -168,12 +335,11 @@ def main():
                         sys.exit(2)
                 elif len(y) == 1 and y == "o":
                     if len(args) > x + 1:
-                        output_flag = True
                         output_path = args[x + 1]
                         x += 1
                         break
                     else:
-                        print("ignis: no path path included\nTry 'ignis " +
+                        print("ignis: no output path included\nTry 'ignis " +
                               "--help' for more information.")
                         sys.exit(2)
                 else:
@@ -185,27 +351,20 @@ def main():
                   "--help' for more information.")
             sys.exit(1)
         x += 1
-    if help_flag:
-        help_print()
-    elif version_flag:
-        version_print()
-    if output_flag:
-        output_path = glob.glob(output_path)
-        if len(output_path) == 1:
-            output_path = output_path[0]
+    if help_flag or version_flag:
+        if help_flag:
+            help_print()
         else:
-            print("ignis: too many output path posibilities")
-    else:
-        print("ignis: output path is required\nTry 'ignis " +
-              "--help' for more information.")
-        sys.exit(5)
-    input_path = glob.glob(input_path)
-    if len(input_path) == 1:
-        input_path = input_path[0]
-        print(get_files(input_path))
-    else:
-        print("ignis: too many input path posibilities")
-        sys.exit(4)
+            version_print()
+        sys.exit(0)
+    if verbose_flag:
+        verbose = True
+    input_path = os.path.abspath(input_path)
+    if input_path[-1] == "/":
+        input_path = input_path[: -1]
+    output_path = os.path.abspath(output_path)
+    handle_files(get_files(input_path, output_path),
+                 input_path, output_path, verbose)
     if http_flag:
         if lan_flag:
             HOST = "0.0.0.0"
