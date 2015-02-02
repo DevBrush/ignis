@@ -324,7 +324,7 @@ def main():
                     verbose_flag = True
                 elif y == "L":
                     lan_flag = True
-                elif len(y) == 1 and y == "i":
+                elif len(args[x][1:]) == 1 and y == "i":
                     if len(args) > x + 1:
                         input_path = args[x + 1]
                         x += 1
@@ -333,7 +333,7 @@ def main():
                         print("ignis: no input path included\nTry 'ignis " +
                               "--help' for more information.")
                         sys.exit(2)
-                elif len(y) == 1 and y == "o":
+                elif len(args[x][1:]) == 1 and y == "o":
                     if len(args) > x + 1:
                         output_path = args[x + 1]
                         x += 1
@@ -357,22 +357,25 @@ def main():
         else:
             version_print()
         sys.exit(0)
+    if lan_flag and not http_flag:
+        print("ignis: --test must be included to use LAN flag\n" +
+              "Try 'ignis --help' for more information.")
+        sys.exit(10)
     if verbose_flag:
         verbose = True
     input_path = os.path.abspath(input_path)
+    output_path = os.path.abspath(output_path)
+    if input_path == output_path:
+        print("ignis: input path and output path cannot be the same path")
+        sys.exit(11)
     if input_path[-1] == "/":
         input_path = input_path[: -1]
-    output_path = os.path.abspath(output_path)
     handle_files(get_files(input_path, output_path),
                  input_path, output_path, verbose)
     if http_flag:
         if lan_flag:
             HOST = "0.0.0.0"
         handle_http(output_path)
-    else:
-        if lan_flag:
-            print("ignis: --test must be included to use LAN flag\n" +
-                  "Try 'ignis --help' for more information.")
 
 if __name__ == "__main__":
     main()
