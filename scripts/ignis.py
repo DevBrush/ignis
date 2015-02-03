@@ -98,23 +98,26 @@ def get_files(input_path, output_path):
 
 
 def handle_files(input_files, input_path, output_path, verbose):
+    header_list = []
     for f in input_files:
-        file_content = b""
         input_file = open(f, "rb")
         if verbose:
             print("Reading " + f)
         input_content = input_file.read()
-        file_content = input_content
         input_content = input_content.replace(b"\r\n", b"\n")
         if verbose:
             print("Checking " + f + " for header values")
         header_vars, is_header = get_header(f, input_content)
+        header_list.append((header_vars, is_header))
+    for t in header_list:
+        file_content = open(t[0][b"@FILEPATH"], "rb").read()
+        header_vars = t[0]
         if "@ISTEMPLATE" not in header_vars:
-            if is_header:
+            if t[1]:
                 tmp_output_path = output_path
                 tmp_input_path = input_path
                 tmp_template_root_path = input_path
-                tmp_template_path = header_vars[b"%TEMPLATE"].decode("utf-8")
+                tmp_template_path = t[0][b"%TEMPLATE"].decode("utf-8")
                 if tmp_output_path[-1] != "/":
                     tmp_output_path += "/"
                 if tmp_template_root_path[-1] != "/":
@@ -123,7 +126,7 @@ def handle_files(input_files, input_path, output_path, verbose):
                     tmp_input_path = tmp_input_path[1:]
                 if tmp_template_path[0] == "/":
                     tmp_template_path = tmp_template_path[1:]
-                tmp_input_path = f[len(tmp_input_path) + 2:]
+                tmp_input_path = header_vars[b"@FILEPATH"][len(tmp_input_path) + 2:]
                 template_path = (tmp_template_root_path + tmp_template_path)
                 template_file = open(template_path, "rb")
                 template_content = template_file.read()
@@ -142,11 +145,22 @@ def handle_files(input_files, input_path, output_path, verbose):
                                 pointer + pointer_start: + pointer +
                                 pointer_start + pointer_end + 3]
                             template_content = template_content.replace(
-                                replaced_content, handle_replace(
+                                replaced_content, handle_variables(
                                     header_vars, replaced_content))
                             pointer += pointer_start + pointer_end + 3
                         else:
                             break
+                    else:
+                        break
+                # Remove beginning and trailing newline characters and spaces
+                template_content = template_content.replace(b"\r\n", b"\n")
+                while len(template_content) > 0:
+                    if (template_content[0] == ord("\n") or
+                            template_content[0] == ord(" ")):
+                        template_content = template_content[1:]
+                    elif (template_content[-1] == ord("\n") or
+                            template_content[-1] == ord(" ")):
+                        template_content = template_content[: -1]
                     else:
                         break
                 file_content = template_content
@@ -156,7 +170,7 @@ def handle_files(input_files, input_path, output_path, verbose):
                 tmp_output_path += "/"
             if tmp_input_path[0] == "/":
                 tmp_input_path = tmp_input_path[1:]
-            tmp_input_path = f[len(tmp_input_path) + 2:]
+            tmp_input_path = header_vars[b"@FILEPATH"][len(tmp_input_path) + 2:]
             os.makedirs(tmp_output_path + "/".join(
                 tmp_input_path.split("/")[: -1]), 0o755, True)
             write_file = open(tmp_output_path + tmp_input_path, "wb")
@@ -167,13 +181,14 @@ def handle_files(input_files, input_path, output_path, verbose):
         print("")
 
 
-def handle_replace(header_vars, replaced_content):
+def handle_variables(header_vars, replaced_content):
     final_content = b""
     replaced_content = replaced_content.replace(b"[!-", b"")
     replaced_content = replaced_content.replace(b"-!]", b"")
     content_list = replaced_content.split(b" ")
     content_list = list(filter(None, content_list))
-    for x in range(len(content_list)):
+    x = 0
+    while x < len(content_list):
         if len(content_list[x]) > 1:
             # handle variables
             if (content_list[x][0] == ord("{") and
@@ -195,7 +210,7 @@ def handle_replace(header_vars, replaced_content):
                         print("ignis: command needed before variable " +
                               variable.decode("utf-8"))
                         sys.exit(1)
-
+        x += 1
     if len(final_content) > 0:
         while final_content[-1] == ord(b"\n"):
             final_content = final_content[: -1]
@@ -206,6 +221,7 @@ def get_header(file_path, content):
     header_vars = {}
     header_content = b""
     is_content_file = False
+    header_vars[b"@FILEPATH"] = os.path.abspath(file_path)
     if content.find(b"!-template-!") == 0:
         header_vars["@ISTEMPLATE"] = True
         return header_vars, is_content_file
@@ -216,7 +232,6 @@ def get_header(file_path, content):
             header_content = content[9: end]
             for var in header_content.split(b"\n"):
                 if var != b"":
-                    header_vars[b"@FILEPATH"] = os.path.abspath(file_path)
                     key_end = var.find(b"=")
                     if key_end < 0:
                         print("ignis: incorrectly formatted header line " +
