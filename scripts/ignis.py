@@ -171,11 +171,34 @@ def handle_replace(header_vars, replaced_content):
     final_content = b""
     replaced_content = replaced_content.replace(b"[!-", b"")
     replaced_content = replaced_content.replace(b"-!]", b"")
-    replaced_content = replaced_content.replace(b" ", b"")
-    if replaced_content in header_vars:
-        final_content = header_vars[replaced_content]
-    while final_content[-1] == ord(b"\n"):
-        final_content = final_content[: -1]
+    content_list = replaced_content.split(b" ")
+    content_list = list(filter(None, content_list))
+    for x in range(len(content_list)):
+        if len(content_list[x]) > 1:
+            # handle variables
+            if (content_list[x][0] == ord("{") and
+                    content_list[x][-1] == ord("}")):
+                if len(content_list[x]) > 2:
+                    variable = content_list[x][1: -1]
+                    if x > 0:
+                        if content_list[x - 1] == b"print":
+                            if variable in header_vars:
+                                final_content += header_vars[variable]
+                            else:
+                                print("ignis: variable " +
+                                      variable.decode("utf-8") +
+                                      " is not in " +
+                                      header_vars[b"@FILEPATH"].
+                                      decode("utf-8") + " header")
+                                sys.exit(1)
+                    else:
+                        print("ignis: command needed before variable " +
+                              variable.decode("utf-8"))
+                        sys.exit(1)
+
+    if len(final_content) > 0:
+        while final_content[-1] == ord(b"\n"):
+            final_content = final_content[: -1]
     return final_content
 
 
