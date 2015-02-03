@@ -199,13 +199,6 @@ def handle_variables(header_vars, replaced_content):
                         if content_list[x - 1] == b"print":
                             if variable in header_vars:
                                 final_content += header_vars[variable]
-                            else:
-                                print("ignis: variable " +
-                                      variable.decode("utf-8") +
-                                      " is not in " +
-                                      header_vars[b"@FILEPATH"].
-                                      decode("utf-8") + " header")
-                                sys.exit(1)
                     else:
                         print("ignis: command needed before variable " +
                               variable.decode("utf-8"))
