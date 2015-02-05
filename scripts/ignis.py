@@ -190,6 +190,10 @@ def handle_variables(header_vars, replaced_content):
     x = 0
     while x < len(content_list):
         if len(content_list[x]) > 1:
+            # TODO handle for statement
+            # if (content_list[x] = b"for":
+            #    .
+
             # handle variables
             if (content_list[x][0] == ord("{") and
                     content_list[x][-1] == ord("}")):
