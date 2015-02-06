@@ -146,7 +146,7 @@ def handle_files(input_files, input_path, output_path, verbose):
                                 pointer_start + pointer_end + 3]
                             template_content = template_content.replace(
                                 replaced_content, handle_variables(
-                                    header_vars, replaced_content))
+                                header_vars, header_list, replaced_content))
                             pointer += pointer_start + pointer_end + 3
                         else:
                             break
@@ -181,7 +181,11 @@ def handle_files(input_files, input_path, output_path, verbose):
         print("")
 
 
-def handle_variables(header_vars, replaced_content):
+#def handle_for(, bool):
+#    
+
+
+def handle_variables(header_vars, header_list, replaced_content):
     final_content = b""
     replaced_content = replaced_content.replace(b"[!-", b"")
     replaced_content = replaced_content.replace(b"-!]", b"")
@@ -191,8 +195,9 @@ def handle_variables(header_vars, replaced_content):
     while x < len(content_list):
         if len(content_list[x]) > 1:
             # TODO handle for statement
-            # if (content_list[x] = b"for":
-            #    .
+            if content_list[x][0] = b"for":
+                if len(content_list[x])
+                for_replace = 
 
             # handle variables
             if (content_list[x][0] == ord("{") and
