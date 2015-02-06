@@ -126,32 +126,47 @@ def handle_files(input_files, input_path, output_path, verbose):
                     tmp_input_path = tmp_input_path[1:]
                 if tmp_template_path[0] == "/":
                     tmp_template_path = tmp_template_path[1:]
-                tmp_input_path = header_vars[b"@FILEPATH"][len(tmp_input_path) + 2:]
+                tmp_input_path = header_vars[b"@FILEPATH"][len(
+                    tmp_input_path) + 2:]
                 template_path = (tmp_template_root_path + tmp_template_path)
                 template_file = open(template_path, "rb")
                 template_content = template_file.read()
                 template_content = template_content[12:]
-                pointer = 0
                 if verbose:
                     print("Building " + tmp_output_path +
                           tmp_input_path)
-                while True:
-                    pointer_start = template_content[pointer:].find(b"[!-")
-                    if pointer_start >= 0:
-                        pointer_end = template_content[
-                            pointer + pointer_start:].find(b"-!]")
-                        if pointer_end >= 0:
-                            replaced_content = template_content[
-                                pointer + pointer_start: + pointer +
-                                pointer_start + pointer_end + 3]
-                            template_content = template_content.replace(
-                                replaced_content, handle_variables(
-                                header_vars, header_list, replaced_content))
-                            pointer += pointer_start + pointer_end + 3
+                for x in range(2):
+                    pointer = 0
+                    while True:
+                        if x == 0:
+                            tmp_p_content = template_content
+                        else:
+                            tmp_p_content = t[0][b"@CONTENT"]
+                        pointer_start = tmp_p_content[
+                            pointer:].find(b"[!-")
+                        if pointer_start >= 0:
+                            pointer_end = tmp_p_content[
+                                pointer + pointer_start:].find(b"-!]")
+                            if pointer_end >= 0:
+                                replaced_content = tmp_p_content[
+                                    pointer + pointer_start: + pointer +
+                                    pointer_start + pointer_end + 3]
+                                tmp_p_content = (tmp_p_content.replace(
+                                                 replaced_content,
+                                                 handle_variables(
+                                                     header_vars,
+                                                     header_list,
+                                                     replaced_content,
+                                                     pointer_start)))
+                                if x == 0:
+                                    template_content = tmp_p_content
+                                else:
+                                    t[0][b"@CONTENT"] = tmp_p_content
+                                pointer += pointer_start + pointer_end + 3
+                            else:
+                                break
                         else:
                             break
-                    else:
-                        break
                 # Remove beginning and trailing newline characters and spaces
                 template_content = template_content.replace(b"\r\n", b"\n")
                 while len(template_content) > 0:
@@ -170,7 +185,8 @@ def handle_files(input_files, input_path, output_path, verbose):
                 tmp_output_path += "/"
             if tmp_input_path[0] == "/":
                 tmp_input_path = tmp_input_path[1:]
-            tmp_input_path = header_vars[b"@FILEPATH"][len(tmp_input_path) + 2:]
+            tmp_input_path = header_vars[b"@FILEPATH"][len(
+                tmp_input_path) + 2:]
             os.makedirs(tmp_output_path + "/".join(
                 tmp_input_path.split("/")[: -1]), 0o755, True)
             write_file = open(tmp_output_path + tmp_input_path, "wb")
@@ -181,24 +197,60 @@ def handle_files(input_files, input_path, output_path, verbose):
         print("")
 
 
-#def handle_for(, bool):
-#    
+def handle_for(var, value_check, sort_var, for_content):
+    # TODO
+    pass
 
 
-def handle_variables(header_vars, header_list, replaced_content):
+def handle_variables(header_vars, header_list, replaced_content, index):
     final_content = b""
     replaced_content = replaced_content.replace(b"[!-", b"")
     replaced_content = replaced_content.replace(b"-!]", b"")
     content_list = replaced_content.split(b" ")
     content_list = list(filter(None, content_list))
     x = 0
+    # handle for statement
+    if len(content_list) > 1:
+        if content_list[0] == b"for":
+            if len(content_list) > 5:
+                # check if correct for loop syntax
+                if (content_list[2] == b"is" and content_list[-2] == b"by" and
+                        (len(content_list[1]) > 1 and
+                            content_list[1][0] == ord("{") and
+                            content_list[1][-1] == ord("}")) and
+                        ((len(content_list[-1]) > 1 and
+                            content_list[-1][0] == ord("{")) or
+                            ((len(content_list[-1]) > 2) and
+                                content_list[-1][0:1] == b"-{")) and
+                        content_list[-1][-1] == ord("}")):
+                    content = header_vars[b"@CONTENT"][index:]
+                    endfor_search = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
+                                              content)
+                    for_content = b""
+                    if bool(endfor_search):
+                        for_end = content.find(b"-!]")
+                        for_content = content[for_end + 3:
+                                              endfor_search.start()]
+                        if len(for_content) > 0:
+                            if (for_content[0] == ord("\n") or
+                                    for_content[0] == ord("\r")):
+                                if (len(for_content) > 1 and
+                                        for_content[0] == ord("\r") and
+                                        for_content[1] == ord("\n")):
+                                    for_content = for_content[1:]
+                                for_content = for_content[1:]
+                    else:
+                        print("ignis: [!- endfor -!] required after 'for' " +
+                              "loop")
+                        sys.exit(1)
+                    for_content = handle_for(content_list[1],
+                                             b" ".join(content_list[3: -2]),
+                                             content_list[-1], for_content)
+                else:
+                    print("ignis: incorrect 'for' loop syntax")
+                    sys.exit(1)
     while x < len(content_list):
         if len(content_list[x]) > 1:
-            # TODO handle for statement
-            if content_list[x][0] = b"for":
-                if len(content_list[x])
-                for_replace = 
-
             # handle variables
             if (content_list[x][0] == ord("{") and
                     content_list[x][-1] == ord("}")):
@@ -210,7 +262,8 @@ def handle_variables(header_vars, header_list, replaced_content):
                                 final_content += header_vars[variable]
                     else:
                         print("ignis: command needed before variable " +
-                              variable.decode("utf-8"))
+                              variable.decode("utf-8") + " in " +
+                              header_vars[b"@FILEPATH"])
                         sys.exit(1)
         x += 1
     if len(final_content) > 0:
@@ -239,18 +292,18 @@ def get_header(file_path, content):
                         print("ignis: incorrectly formatted header line " +
                               var.decode("utf-8") + " in " +
                               os.path.abspath(file_path))
-                        sys.exit(7)
+                        sys.exit(1)
                     if not re.match(b"^[A-Za-z0-9_-]*$", var[: key_end]):
                         if var[: key_end] != b"%TEMPLATE":
                             print("ignis: invalid header value name " +
                                   var[: key_end].decode("utf-8") + " in " +
                                   os.path.abspath(file_path))
-                            sys.exit(8)
+                            sys.exit(1)
                     header_vars[var[: key_end]] = var[key_end + 1:]
             if b"%TEMPLATE" not in header_vars:
                 print("ignis: %TEMPLATE required as a header line in " +
                       os.path.abspath(file_path))
-                sys.exit(9)
+                sys.exit(1)
             is_content_file = True
             content = content[end + 4:]
             while content[0] == ord(b"\n"):
@@ -259,7 +312,7 @@ def get_header(file_path, content):
         else:
             print("ignis: header section in " + os.path.abspath(file_path) +
                   " must end with -!")
-            sys.exit(6)
+            sys.exit(1)
     return header_vars, is_content_file
 
 
@@ -337,7 +390,7 @@ def main():
                 else:
                     print("ignis: no input path included\nTry 'ignis " +
                           "--help' for more information.")
-                    sys.exit(2)
+                    sys.exit(1)
             elif args[x][2:] == "output":
                 if len(args) > x + 1:
                     output_path = args[x + 1]
@@ -346,7 +399,7 @@ def main():
                 else:
                     print("ignis: no output path included\nTry 'ignis " +
                           "--help' for more information.")
-                    sys.exit(2)
+                    sys.exit(1)
             elif args[x][2:] != "":
                 print("ignis: unrecognized option " + args[x] + "\nTry " +
                       "'ignis --help' for more information.")
@@ -372,7 +425,7 @@ def main():
                     else:
                         print("ignis: no input path included\nTry 'ignis " +
                               "--help' for more information.")
-                        sys.exit(2)
+                        sys.exit(1)
                 elif len(args[x][1:]) == 1 and y == "o":
                     if len(args) > x + 1:
                         output_path = args[x + 1]
@@ -381,7 +434,7 @@ def main():
                     else:
                         print("ignis: no output path included\nTry 'ignis " +
                               "--help' for more information.")
-                        sys.exit(2)
+                        sys.exit(1)
                 else:
                     print("ignis: unrecognized option " + args[x] + "\nTry " +
                           "'ignis --help' for more information.")
@@ -400,14 +453,14 @@ def main():
     if lan_flag and not http_flag:
         print("ignis: --test must be included to use LAN flag\n" +
               "Try 'ignis --help' for more information.")
-        sys.exit(10)
+        sys.exit(1)
     if verbose_flag:
         verbose = True
     input_path = os.path.abspath(input_path)
     output_path = os.path.abspath(output_path)
     if input_path == output_path:
         print("ignis: input path and output path cannot be the same path")
-        sys.exit(11)
+        sys.exit(1)
     if input_path[-1] == "/":
         input_path = input_path[: -1]
     handle_files(get_files(input_path, output_path),
