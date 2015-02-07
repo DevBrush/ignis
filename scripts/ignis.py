@@ -197,8 +197,15 @@ def handle_files(input_files, input_path, output_path, verbose):
         print("")
 
 
-def handle_for(var, value_check, sort_var, for_content):
+def handle_for(header_list, var, value_check, sort_var, for_content):
     # TODO
+    header_set = []
+    for header in header_list:
+        if sort_var[1: -1] in header[0]:
+            header_set.append(header[0][sort_var[1: -1]])
+    header_set_sort = sorted(header_set, key=lambda s: s.lower())
+    header_set_order = sorted(range(len(header_set)), key=lambda k: header_set[k])
+    print(header_set_sort[::-1])
     pass
 
 
@@ -243,7 +250,7 @@ def handle_variables(header_vars, header_list, replaced_content, index):
                         print("ignis: [!- endfor -!] required after 'for' " +
                               "loop")
                         sys.exit(1)
-                    for_content = handle_for(content_list[1],
+                    for_content = handle_for(header_list, content_list[1],
                                              b" ".join(content_list[3: -2]),
                                              content_list[-1], for_content)
                 else:
