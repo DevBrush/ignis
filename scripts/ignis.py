@@ -138,7 +138,7 @@ def handle_files(input_files, input_path, output_path, verbose):
                 for x in range(2):
                     pointer = 0
                     while True:
-                        if x == 0:
+                        if x == 1:
                             tmp_p_content = template_content
                         else:
                             tmp_p_content = t[0][b"@CONTENT"]
@@ -149,16 +149,30 @@ def handle_files(input_files, input_path, output_path, verbose):
                                 pointer + pointer_start:].find(b"-!]")
                             if pointer_end >= 0:
                                 replaced_content = tmp_p_content[
-                                    pointer + pointer_start: + pointer +
+                                    pointer + pointer_start: pointer +
                                     pointer_start + pointer_end + 3]
-                                tmp_p_content = (tmp_p_content.replace(
-                                                 replaced_content,
-                                                 handle_variables(
-                                                     header_vars,
+                                for_start_location = (
+                                    re.search(b"\[!-[ ]{0,}for",
+                                              replaced_content))
+                                if for_start_location:
+                                    if for_start_location.start() == 0:
+                                        for_end_location = (
+                                            re.search(b"\[!-[ ]{0,}endfor[ ]" +
+                                                      b"{0,}-!\]",
+                                                      tmp_p_content))
+                                        if for_end_location:
+                                            pointer_end = (
+                                                for_end_location.end() - 3)
+                                tmp_p_content = (
+                                    tmp_p_content[: pointer + pointer_start] +
+                                    handle_variables(header_vars,
                                                      header_list,
                                                      replaced_content,
-                                                     pointer_start)))
-                                if x == 0:
+                                                     pointer_start) +
+                                    tmp_p_content[
+                                        pointer + pointer_start +
+                                        pointer_end + 3:])
+                                if x == 1:
                                     template_content = tmp_p_content
                                 else:
                                     t[0][b"@CONTENT"] = tmp_p_content
@@ -198,15 +212,119 @@ def handle_files(input_files, input_path, output_path, verbose):
 
 
 def handle_for(header_list, var, value_check, sort_var, for_content):
-    # TODO
+    final_content = b""
     header_set = []
+    new_header_list = []
+    sort_value = b""
+    check_variable = b""
+    check_value = b""
+    reverse = False
+    error = False
+    if len(sort_var) > 1:
+        if sort_var[0] == ord("-"):
+            reverse = True
+        if reverse:
+            if len(sort_var) > 2:
+                if sort_var[1] != ord("{"):
+                    error = True
+            else:
+                error = True
+        else:
+            if sort_var[0] != ord("{"):
+                error = True
+        if sort_var[-1] != ord("}"):
+            error = True
+        sort_value = sort_var[1: -1]
+        if reverse:
+            sort_value = sort_value[1:]
+    else:
+        error = True
+    if error:
+        print("ignis: incorrectly formatted sort value in for loop")
+        sys.exit(1)
+    error = False
+    if len(var) > 1:
+        if var[0] != ord("{") or var[-1] != ord("}"):
+            error = True
+        else:
+            check_variable = var[1: -1]
+    else:
+        error = True
+    if error:
+        print("ignis: incorrectly formatted check variable in for loop")
+        sys.exit(1)
+    error = False
+    if len(value_check) > 1:
+        if value_check[0] != ord("\"") or value_check[-1] != ord("\""):
+            error = True
+        else:
+            check_value = value_check[1: -1]
+    else:
+        error = True
+    if error:
+        print("ignis: incorrectly formatted check value in for loop")
+        sys.exit(1)
     for header in header_list:
-        if sort_var[1: -1] in header[0]:
-            header_set.append(header[0][sort_var[1: -1]])
+        if sort_value in header[0]:
+            header_set.append(header[0][sort_value])
+            new_header_list.append(header[0])
     header_set_sort = sorted(header_set, key=lambda s: s.lower())
-    header_set_order = sorted(range(len(header_set)), key=lambda k: header_set[k])
-    print(header_set_sort[::-1])
-    pass
+    header_set_order = sorted(range(len(header_set)),
+                              key=lambda k: header_set[k])
+    if reverse:
+        header_set_sort = header_set_sort[::-1]
+        header_set_order = header_set_order[::-1]
+    for i in header_set_order:
+        if check_variable in new_header_list[i]:
+            if new_header_list[i][check_variable] == check_value:
+                pointer = 0
+                tmp_for_content = for_content
+                while True:
+                    pointer_start = tmp_for_content[pointer:].find(b"[!-")
+                    if pointer_start >= 0:
+                        pointer_end = tmp_for_content[
+                            pointer + pointer_start:].find(b"-!]")
+                        if pointer_end >= 0:
+                            replaced_content = tmp_for_content[
+                                pointer + pointer_start: pointer +
+                                pointer_start + pointer_end + 3]
+                            tmp_for_content = (tmp_for_content.replace(
+                                replaced_content, handle_print(
+                                    new_header_list[i], replaced_content)))
+                            pointer += pointer_start + pointer_end + 3
+                        else:
+                            break
+                    else:
+                        break
+                final_content += tmp_for_content
+    return(final_content)
+
+
+def handle_print(header_vars, replaced_content):
+    final_content = b""
+    replaced_content = replaced_content.replace(b"[!-", b"")
+    replaced_content = replaced_content.replace(b"-!]", b"")
+    content_list = replaced_content.split(b" ")
+    content_list = list(filter(None, content_list))
+    x = 0
+    while x < len(content_list):
+        if len(content_list[x]) > 1:
+            # handle variables
+            if (content_list[x][0] == ord("{") and
+                    content_list[x][-1] == ord("}")):
+                if len(content_list[x]) > 2:
+                    variable = content_list[x][1: -1]
+                    if x > 0:
+                        if content_list[x - 1] == b"print":
+                            if variable in header_vars:
+                                final_content += header_vars[variable]
+                    else:
+                        print("ignis: command needed before variable " +
+                              variable.decode("utf-8") + " in " +
+                              header_vars[b"@FILEPATH"])
+                        sys.exit(1)
+        x += 1
+    return final_content
 
 
 def handle_variables(header_vars, header_list, replaced_content, index):
@@ -221,15 +339,17 @@ def handle_variables(header_vars, header_list, replaced_content, index):
         if content_list[0] == b"for":
             if len(content_list) > 5:
                 # check if correct for loop syntax
+                sort_check = False
+                if len(content_list[-1]) > 1:
+                    if (content_list[-1][-1] == ord("}") and
+                            (content_list[-1][0] == ord("{") or
+                                content_list[-1][: 2] == b"-{")):
+                        sort_check = True
                 if (content_list[2] == b"is" and content_list[-2] == b"by" and
                         (len(content_list[1]) > 1 and
                             content_list[1][0] == ord("{") and
                             content_list[1][-1] == ord("}")) and
-                        ((len(content_list[-1]) > 1 and
-                            content_list[-1][0] == ord("{")) or
-                            ((len(content_list[-1]) > 2) and
-                                content_list[-1][0:1] == b"-{")) and
-                        content_list[-1][-1] == ord("}")):
+                        sort_check):
                     content = header_vars[b"@CONTENT"][index:]
                     endfor_search = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
                                               content)
@@ -253,26 +373,11 @@ def handle_variables(header_vars, header_list, replaced_content, index):
                     for_content = handle_for(header_list, content_list[1],
                                              b" ".join(content_list[3: -2]),
                                              content_list[-1], for_content)
+                    final_content += for_content[: endfor_search.start()]
                 else:
                     print("ignis: incorrect 'for' loop syntax")
                     sys.exit(1)
-    while x < len(content_list):
-        if len(content_list[x]) > 1:
-            # handle variables
-            if (content_list[x][0] == ord("{") and
-                    content_list[x][-1] == ord("}")):
-                if len(content_list[x]) > 2:
-                    variable = content_list[x][1: -1]
-                    if x > 0:
-                        if content_list[x - 1] == b"print":
-                            if variable in header_vars:
-                                final_content += header_vars[variable]
-                    else:
-                        print("ignis: command needed before variable " +
-                              variable.decode("utf-8") + " in " +
-                              header_vars[b"@FILEPATH"])
-                        sys.exit(1)
-        x += 1
+    final_content += handle_print(header_vars, replaced_content)
     if len(final_content) > 0:
         while final_content[-1] == ord(b"\n"):
             final_content = final_content[: -1]
