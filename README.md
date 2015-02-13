@@ -13,4 +13,4 @@
 - Python >= 3.0
 
 #### Usage
-ignis [ OPTIONS ]... [ -i <path="./"> ] [ -o <path="__website__"> ]
+ignis [ OPTIONS ]... [ -i \<path="./"\> ] [ -o \<path="__website__"\> ]
