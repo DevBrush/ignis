@@ -447,11 +447,11 @@ def handle_http(path):
 
 def help_print():
     print("Usage: ignis [ OPTIONS ]... [ -i <path=\"./\"> ] " +
-          "[ -o <path=\"__website__\"> ] \n\n Required:\n" +
+          "[ -o <path=\"__website__\"> ] \n\nRequired:\n" +
           "  -i, --input  <path>      Input path of website content\n" +
           "  -o, --output  <path>     Output path for finished static " +
           "website\n\n" +
-          " Options:\n"
+          "Options:\n"
           "  -h, --help               Print Help (this message) and exit\n" +
           "  -L, --LAN                Open test server up to local network\n"
           "  -T, --test               Run test web server on port 9999 " +
@@ -459,7 +459,7 @@ def help_print():
           "  -V, --verbose            Print verbose messages while " +
           "building\n"
           "  -v, --version            Print version information and exit\n\n" +
-          " Examples:\n" +
+          "Examples:\n" +
           "  ignis -i path/to/files -o path/for/website\n" +
           "  ignis --verbose -o example-site\n" +
           "  ignis -V -T -L -o example-site\n" +
