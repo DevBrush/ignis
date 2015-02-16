@@ -446,21 +446,20 @@ def handle_http(path):
 
 
 def help_print():
-    print("Usage: ignis [ OPTIONS ]... [ -i <path=\"./\"> ] " +
-          "[ -o <path=\"__website__\"> ] \n\nRequired:\n" +
-          "  -i, --input  <path>      Input path of website content\n" +
-          "  -o, --output  <path>     Output path for finished static " +
-          "website\n\n" +
+    print("Usage: ignis [ OPTIONS ]... [ -o <path=\"./__website__\"> ] " +
+          "[ input_path=\"./\" ]\n\n" +
           "Options:\n"
           "  -h, --help               Print Help (this message) and exit\n" +
           "  -L, --LAN                Open test server up to local network\n"
+          "  -o, --output  <path>     Output path for finished static " +
+          "website\n\n" +
           "  -T, --test               Run test web server on port 9999 " +
           "after build\n"
           "  -V, --verbose            Print verbose messages while " +
           "building\n"
           "  -v, --version            Print version information and exit\n\n" +
           "Examples:\n" +
-          "  ignis -i path/to/files -o path/for/website\n" +
+          "  ignis -o path/for/website path/to/files\n" +
           "  ignis --verbose -o example-site\n" +
           "  ignis -V -T -L -o example-site\n" +
           "  ignis -VTL")
@@ -482,7 +481,7 @@ def main():
     output_path = "__website__"
     args = sys.argv[1:]
     x = 0
-    while x < len(sys.argv[1:]):
+    while x < len(args):
         if len(args[x]) > 2 and args[x].find("--") == 0:
             if args[x][2:] == "help":
                 help_flag = True
@@ -494,15 +493,6 @@ def main():
                 lan_flag = True
             elif args[x][2:] == "verbose":
                 verbose_flag = True
-            elif args[x][2:] == "input":
-                if len(args) > x + 1:
-                    input_path = args[x + 1]
-                    x += 1
-                    break
-                else:
-                    print("ignis: no input path included\nTry 'ignis " +
-                          "--help' for more information.")
-                    sys.exit(1)
             elif args[x][2:] == "output":
                 if len(args) > x + 1:
                     output_path = args[x + 1]
@@ -529,15 +519,6 @@ def main():
                     verbose_flag = True
                 elif y == "L":
                     lan_flag = True
-                elif len(args[x][1:]) == 1 and y == "i":
-                    if len(args) > x + 1:
-                        input_path = args[x + 1]
-                        x += 1
-                        break
-                    else:
-                        print("ignis: no input path included\nTry 'ignis " +
-                              "--help' for more information.")
-                        sys.exit(1)
                 elif len(args[x][1:]) == 1 and y == "o":
                     if len(args) > x + 1:
                         output_path = args[x + 1]
@@ -552,9 +533,12 @@ def main():
                           "'ignis --help' for more information.")
                     sys.exit(1)
         elif ("--".find(args[x]) == 0 and x != 0) or "--".find(args[x]) != 0:
-            print("ignis: invalid option -- '" + args[x] + "'\nTry 'ignis " +
-                  "--help' for more information.")
-            sys.exit(1)
+            if x == len(args) - 1:
+                input_path = args[x]
+            else:
+                print("ignis: invalid option -- '" + args[x] + "'\nTry 'ignis " +
+                      "--help' for more information.")
+                sys.exit(1)
         x += 1
     if help_flag or version_flag:
         if help_flag:
@@ -578,6 +562,7 @@ def main():
     handle_files(get_files(input_path, output_path),
                  input_path, output_path, verbose)
     if http_flag:
+        os.makedirs(output_path, 0o755, True)
         if lan_flag:
             HOST = "0.0.0.0"
         handle_http(output_path)

@@ -14,21 +14,18 @@
 
 #### Usage
     $ ignis -h
-    Usage: ignis [ OPTIONS ]... [ -i \<path="./"\> ] [ -o \<path="\_\_website\_\_"\> ]
-
-    Required:
-      -i, --input  <path>      Input path of website content
-      -o, --output  <path>     Output path for finished static website
+    Usage: ignis [ OPTIONS ]... [ -o <path="./__website__"> ] [ input_path="./" ]
 
     Options:
       -h, --help               Print Help (this message) and exit
       -L, --LAN                Open test server up to local network
+      -o, --output  <path>     Output path for finished static website
       -T, --test               Run test web server on port 9999 after build
       -V, --verbose            Print verbose messages while building
       -v, --version            Print version information and exit
 
     Examples:
-      ignis -i path/to/files -o path/for/website
+      ignis -o path/for/website path/to/files
       ignis --verbose -o example-site
       ignis -V -T -L -o example-site
       ignis -VTL
