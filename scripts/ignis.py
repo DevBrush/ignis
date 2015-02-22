@@ -447,7 +447,7 @@ def handle_http(path):
 
 def help_print():
     print("Usage: ignis [ OPTIONS ]... [ -o <path=\"./__website__\"> ] " +
-          "[ input_path=\"./\" ]\n\n" +
+          "[ <input_path=\"./\"> ]\n\n" +
           "Options:\n"
           "  -h, --help               Print Help (this message) and exit\n" +
           "  -L, --LAN                Open test server up to local network\n"

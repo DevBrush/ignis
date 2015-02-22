@@ -14,7 +14,7 @@
 
 #### Usage
     $ ignis -h
-    Usage: ignis [ OPTIONS ]... [ -o <path="./__website__"> ] [ input_path="./" ]
+    Usage: ignis [ OPTIONS ]... [ -o <path="./__website__"> ] [ <input_path="./"> ]
 
     Options:
       -h, --help               Print Help (this message) and exit
