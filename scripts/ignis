@@ -213,7 +213,7 @@ def handle_files(input_files, verbose, mock_flag):
             if verbose:
                 print(mock + "Writing " + tmp_output_path + tmp_input_path)
             if not mock_flag:
-              write_file.write(file_content)
+                write_file.write(file_content)
     if verbose:
         print("")
 
@@ -553,10 +553,10 @@ def main():
                         tmp_port = args[x + 1]
                         if tmp_port.isdigit():
                             if int(tmp_port) >= 0 and int(tmp_port) < 65536:
-                              PORT = int(tmp_port)
+                                PORT = int(tmp_port)
                             else:
-                                print("ignis: invalid port number\nTry 'ignis " +
-                                      "--help' for more information.")
+                                print("ignis: invalid port number\nTry " +
+                                      "'ignis --help' for more information.")
                                 sys.exit(1)
                         else:
                             print("ignis: invalid port number\nTry 'ignis " +
@@ -585,8 +585,8 @@ def main():
             if x == len(args) - 1:
                 INPUT_PATH = args[x]
             else:
-                print("ignis: invalid option -- '" + args[x] + "'\nTry 'ignis " +
-                      "--help' for more information.")
+                print("ignis: invalid option -- '" + args[x] +
+                      "\nTry 'ignis --help' for more information.")
                 sys.exit(1)
         x += 1
     if help_flag or version_flag:
