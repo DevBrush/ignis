@@ -35,6 +35,8 @@ VERSION = "1.0.0.0"
 AUTHOR = "Vi Grey (http://pariahvi.com)"
 HOST = "127.0.0.1"
 PORT = 9999
+INPUT_PATH = "."
+OUTPUT_PATH = "__website__"
 
 
 class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -86,27 +88,30 @@ class HandleTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 
-def get_files(input_path, output_path):
+def get_files():
     file_list = []
-    for root, dirs, files in os.walk(input_path):
+    for root, dirs, files in os.walk(INPUT_PATH):
         if root[-1] == "/":
             root = root[: -1]
-        if re.search("(/\.)", root) is None and output_path not in root:
+        if re.search("(/\.)", root) is None and OUTPUT_PATH not in root:
             for f in files:
                 file_list.append(root + "/" + f)
     return file_list
 
 
-def handle_files(input_files, input_path, output_path, verbose):
+def handle_files(input_files, verbose, mock_flag):
+    mock = ""
+    if mock_flag:
+        mock = "[MOCK] "
     header_list = []
     for f in input_files:
         input_file = open(f, "rb")
         if verbose:
-            print("Reading " + f)
+            print(mock + "Reading " + f)
         input_content = input_file.read()
         input_content = input_content.replace(b"\r\n", b"\n")
         if verbose:
-            print("Checking " + f + " for header values")
+            print(mock + "Checking " + f + " for header values")
         header_vars, is_header = get_header(f, input_content)
         header_list.append((header_vars, is_header))
     for t in header_list:
@@ -114,9 +119,9 @@ def handle_files(input_files, input_path, output_path, verbose):
         header_vars = t[0]
         if "@ISTEMPLATE" not in header_vars:
             if t[1]:
-                tmp_output_path = output_path
-                tmp_input_path = input_path
-                tmp_template_root_path = input_path
+                tmp_output_path = OUTPUT_PATH
+                tmp_input_path = INPUT_PATH
+                tmp_template_root_path = INPUT_PATH
                 tmp_template_path = t[0][b"%TEMPLATE"].decode("utf-8")
                 if tmp_output_path[-1] != "/":
                     tmp_output_path += "/"
@@ -133,7 +138,7 @@ def handle_files(input_files, input_path, output_path, verbose):
                 template_content = template_file.read()
                 template_content = template_content[12:]
                 if verbose:
-                    print("Building " + tmp_output_path +
+                    print(mock + "Building " + tmp_output_path +
                           tmp_input_path)
                 for x in range(2):
                     pointer = 0
@@ -193,20 +198,22 @@ def handle_files(input_files, input_path, output_path, verbose):
                     else:
                         break
                 file_content = template_content
-            tmp_output_path = output_path
-            tmp_input_path = input_path
+            tmp_output_path = OUTPUT_PATH
+            tmp_input_path = INPUT_PATH
             if tmp_output_path[-1] != "/":
                 tmp_output_path += "/"
             if tmp_input_path[0] == "/":
                 tmp_input_path = tmp_input_path[1:]
             tmp_input_path = header_vars[b"@FILEPATH"][len(
                 tmp_input_path) + 2:]
-            os.makedirs(tmp_output_path + "/".join(
-                tmp_input_path.split("/")[: -1]), 0o755, True)
-            write_file = open(tmp_output_path + tmp_input_path, "wb")
+            if not mock_flag:
+                os.makedirs(tmp_output_path + "/".join(
+                    tmp_input_path.split("/")[: -1]), 0o755, True)
+                write_file = open(tmp_output_path + tmp_input_path, "wb")
             if verbose:
-                print("Writing " + tmp_output_path + tmp_input_path)
-            write_file.write(file_content)
+                print(mock + "Writing " + tmp_output_path + tmp_input_path)
+            if not mock_flag:
+              write_file.write(file_content)
     if verbose:
         print("")
 
@@ -446,15 +453,17 @@ def handle_http(path):
 
 
 def help_print():
-    print("Usage: ignis [ OPTIONS ]... [ -o <path=\"./__website__\"> ] " +
+    print("Usage: ignis [ OPTIONS ]... [ -o <path=./__website__> ] " +
           "[ <input_path=\"./\"> ]\n\n" +
           "Options:\n"
           "  -h, --help               Print Help (this message) and exit\n" +
           "  -L, --LAN                Open test server up to local network\n"
-          "  -o, --output  <path>     Output path for finished static " +
-          "website\n\n" +
-          "  -T, --test               Run test web server on port 9999 " +
-          "after build\n"
+          "  -M, --mock               Run a mock website build\n" +
+          "  -o, --output  <path>     Output path for finished website " +
+          "(path=./__website__)\n" +
+          "  -P, --port  <port>       Port for finished website " +
+          "(port=9999)\n" +
+          "  -T, --test               Run test web server after build\n" +
           "  -V, --verbose            Print verbose messages while " +
           "building\n"
           "  -v, --version            Print version information and exit\n\n" +
@@ -462,7 +471,9 @@ def help_print():
           "  ignis -o path/for/website path/to/files\n" +
           "  ignis --verbose -o example-site\n" +
           "  ignis -V -T -L -o example-site\n" +
-          "  ignis -VTL")
+          "  ignis -VTL\n" +
+          "  ignis --port 9090 -VTL\n" +
+          "  ignis -MV")
 
 
 def version_print():
@@ -471,14 +482,16 @@ def version_print():
 
 def main():
     global HOST
+    global PORT
+    global INPUT_PATH
+    global OUTPUT_PATH
     help_flag = False
     version_flag = False
     verbose_flag = False
     http_flag = False
     lan_flag = False
+    mock_flag = False
     verbose = False
-    input_path = "."
-    output_path = "__website__"
     args = sys.argv[1:]
     x = 0
     while x < len(args):
@@ -493,9 +506,23 @@ def main():
                 lan_flag = True
             elif args[x][2:] == "verbose":
                 verbose_flag = True
+            elif args[x][2:] == "mock":
+                mock_flag = True
+            elif len(args[x][2:]) == 1 and y == "port":
+                if len(args) > x + 1:
+                    tmp_port = args[x + 1]
+                    if tmp_port.isdigit():
+                        if int(tmp_port) >= 0 and int(tmp_port) < 65536:
+                            PORT = int(tmp_port)
+                    x += 1
+                    break
+                else:
+                    print("ignis: no port included\nTry 'ignis " +
+                          "--help' for more information.")
+                    sys.exit(1)
             elif args[x][2:] == "output":
                 if len(args) > x + 1:
-                    output_path = args[x + 1]
+                    OUTPUT_PATH = args[x + 1]
                     x += 1
                     break
                 else:
@@ -515,13 +542,35 @@ def main():
                     version_flag = True
                 elif y == "T":
                     http_flag = True
-                elif y == "V":
-                    verbose_flag = True
                 elif y == "L":
                     lan_flag = True
+                elif y == "V":
+                    verbose_flag = True
+                elif y == "M":
+                    mock_flag = True
+                elif y == "P":
+                    if len(args) > x + 1:
+                        tmp_port = args[x + 1]
+                        if tmp_port.isdigit():
+                            if int(tmp_port) >= 0 and int(tmp_port) < 65536:
+                              PORT = int(tmp_port)
+                            else:
+                                print("ignis: invalid port number\nTry 'ignis " +
+                                      "--help' for more information.")
+                                sys.exit(1)
+                        else:
+                            print("ignis: invalid port number\nTry 'ignis " +
+                                  "--help' for more information.")
+                            sys.exit(1)
+                        x += 1
+                        break
+                    else:
+                        print("ignis: no port included\nTry 'ignis " +
+                              "--help' for more information.")
+                        sys.exit(1)
                 elif len(args[x][1:]) == 1 and y == "o":
                     if len(args) > x + 1:
-                        output_path = args[x + 1]
+                        OUTPUT_PATH = args[x + 1]
                         x += 1
                         break
                     else:
@@ -534,7 +583,7 @@ def main():
                     sys.exit(1)
         elif ("--".find(args[x]) == 0 and x != 0) or "--".find(args[x]) != 0:
             if x == len(args) - 1:
-                input_path = args[x]
+                INPUT_PATH = args[x]
             else:
                 print("ignis: invalid option -- '" + args[x] + "'\nTry 'ignis " +
                       "--help' for more information.")
@@ -546,26 +595,35 @@ def main():
         else:
             version_print()
         sys.exit(0)
+    if mock_flag:
+        if http_flag:
+            print("ignis: --test must NOT be included to use mock flag\n" +
+                  "Try 'ignis --help' for more information.")
+            sys.exit(1)
+        elif lan_flag:
+            print("ignis: --LAN must NOT be included to use mock flag\n" +
+                  "Try 'ignis --help' for more information.")
+            sys.exit(1)
     if lan_flag and not http_flag:
         print("ignis: --test must be included to use LAN flag\n" +
               "Try 'ignis --help' for more information.")
         sys.exit(1)
     if verbose_flag:
         verbose = True
-    input_path = os.path.abspath(input_path)
-    output_path = os.path.abspath(output_path)
-    if input_path == output_path:
+    INPUT_PATH = os.path.abspath(INPUT_PATH)
+    OUTPUT_PATH = os.path.abspath(OUTPUT_PATH)
+    if INPUT_PATH == OUTPUT_PATH:
         print("ignis: input path and output path cannot be the same path")
         sys.exit(1)
-    if input_path[-1] == "/":
-        input_path = input_path[: -1]
-    handle_files(get_files(input_path, output_path),
-                 input_path, output_path, verbose)
+    if INPUT_PATH[-1] == "/":
+        INPUT_PATH = INPUT_PATH[: -1]
+    handle_files(get_files(), verbose, mock_flag)
     if http_flag:
-        os.makedirs(output_path, 0o755, True)
+        if not mock_flag:
+            os.makedirs(OUTPUT_PATH, 0o755, True)
         if lan_flag:
             HOST = "0.0.0.0"
-        handle_http(output_path)
+        handle_http(OUTPUT_PATH)
 
 if __name__ == "__main__":
     main()

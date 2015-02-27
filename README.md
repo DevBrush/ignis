@@ -19,8 +19,10 @@
     Options:
       -h, --help               Print Help (this message) and exit
       -L, --LAN                Open test server up to local network
-      -o, --output  <path>     Output path for finished static website
-      -T, --test               Run test web server on port 9999 after build
+      -M, --mock               Run a mock website build
+      -o, --output  <path>     Output path for finished website (path=./__website__)
+      -P, --port  <port>       Port for finished website (port=9999)
+      -T, --test               Run test web server after build
       -V, --verbose            Print verbose messages while building
       -v, --version            Print version information and exit
 
@@ -29,3 +31,5 @@
       ignis --verbose -o example-site
       ignis -V -T -L -o example-site
       ignis -VTL
+      ignis --port 9090 -VTL
+      ignis -MV
