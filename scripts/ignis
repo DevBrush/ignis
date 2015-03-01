@@ -99,6 +99,86 @@ def get_files():
     return file_list
 
 
+def handle_nesting(header_list, content, pointer):
+    while True:
+        for_exists = re.search(b"\[!-[ ]{0,}for", content[pointer:])
+        endfor_exists = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
+                                  content[pointer:]))
+        if for_exists and endfor_exists:
+            for_start = for_exists.start()
+            endfor_start = endfor_exists.start()
+            if for_start < endfor_start:
+                content = handle_nesting(header_list, content, for_start + 1)
+            else:
+                for_end_exists = re.search(b"-!\]", content[for_start:])
+                for_end = for_end_exists.end()
+                if for_end < endfor_start:
+                    tmp_content = content[pointer + for_end: pointer +
+                                          endfor_start]
+                    replacement_content = handle_for_string(
+                        header_list, tmp_content,
+                        content[pointer + for_start: pointer + for_end])
+                    content = (content[: pointer + for_start:] +
+                               replacement_content +
+                               content[pointer + endfor_end])
+                    if pointer > 0:
+                        
+                        break
+                else:
+                    print("ignis: incorrect 'for' loop syntax")
+                    sys.exit(1)
+        elif not for_exists and not endfor_exists:
+            break
+        elif not for_exists:
+            print("ignis: 'for' loop required before 'endfor' statement")
+            sys.exit(1)
+        elif not endfor_exists:
+            print("ignis: [!- endfor -!] required after 'for' loop")
+            sys.exit(1)
+
+
+def handle_for_string(header_list, for_content, for_string):
+    final_content = b""
+    for_string = for_string.replace(b"[!-", b"")
+    for_string = for_string.replace(b"-!]", b"")
+    content_list = for_string.split(b" ")
+    content_list = list(filter(None, content_list))
+    if len(content_list) > 1:
+        if content_list[0] == b"for":
+            if len(content_list) > 5:
+                # check if correct for loop syntax
+                sort_check = False
+                if len(content_list[-1]) > 1:
+                    if (content_list[-1][-1] == ord("}") and
+                            (content_list[-1][0] == ord("{") or
+                                content_list[-1][: 2] == b"-{")):
+                        sort_check = True
+                if (content_list[2] == b"is" and
+                        content_list[-2] == b"by" and
+                        (len(content_list[1]) > 1 and
+                            content_list[1][0] == ord("{") and
+                            content_list[1][-1] == ord("}")) and
+                        sort_check):
+                    content = header_vars[b"@CONTENT"][index:]
+                    for_end = content.find(b"-!]")
+                    if len(for_content) > 0:
+                        if for_content[0] == ord("\n") or
+                              for_content[0] == ord("\r")):
+                            if (len(for_content) > 1 and
+                                    for_content[0] == ord("\r") and
+                                    for_content[1] == ord("\n")):
+                                for_content = for_content[1:]
+                            for_content = for_content[1:]
+                    for_content = handle_for(header_list, content_list[1],
+                                             b" ".join(content_list[3: -2]),
+                                             content_list[-1], for_content)
+                    final_content += for_content[: endfor_search.start()]
+                else:
+                    print("ignis: incorrect 'for' loop syntax")
+                    sys.exit(1)
+    return final_content
+
+
 def handle_files(input_files, verbose, mock_flag):
     mock = ""
     if mock_flag:
@@ -159,6 +239,7 @@ def handle_files(input_files, verbose, mock_flag):
                                 for_start_location = (
                                     re.search(b"\[!-[ ]{0,}for",
                                               replaced_content))
+                                # TODO For Loop Nesting
                                 if for_start_location:
                                     if for_start_location.start() == 0:
                                         for_end_location = (
@@ -247,7 +328,7 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
     else:
         error = True
     if error:
-        print("ignis: incorrectly formatted sort value in for loop")
+        print("ignis: incorrectly formatted sort value in 'for' loop")
         sys.exit(1)
     error = False
     if len(var) > 1:
@@ -258,7 +339,7 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
     else:
         error = True
     if error:
-        print("ignis: incorrectly formatted check variable in for loop")
+        print("ignis: incorrectly formatted check variable in 'for' loop")
         sys.exit(1)
     error = False
     if len(value_check) > 1:
@@ -269,7 +350,7 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
     else:
         error = True
     if error:
-        print("ignis: incorrectly formatted check value in for loop")
+        print("ignis: incorrectly formatted check value in 'for' loop")
         sys.exit(1)
     for header in header_list:
         if sort_value in header[0]:
@@ -341,49 +422,6 @@ def handle_variables(header_vars, header_list, replaced_content, index):
     content_list = replaced_content.split(b" ")
     content_list = list(filter(None, content_list))
     x = 0
-    # handle for statement
-    if len(content_list) > 1:
-        if content_list[0] == b"for":
-            if len(content_list) > 5:
-                # check if correct for loop syntax
-                sort_check = False
-                if len(content_list[-1]) > 1:
-                    if (content_list[-1][-1] == ord("}") and
-                            (content_list[-1][0] == ord("{") or
-                                content_list[-1][: 2] == b"-{")):
-                        sort_check = True
-                if (content_list[2] == b"is" and content_list[-2] == b"by" and
-                        (len(content_list[1]) > 1 and
-                            content_list[1][0] == ord("{") and
-                            content_list[1][-1] == ord("}")) and
-                        sort_check):
-                    content = header_vars[b"@CONTENT"][index:]
-                    endfor_search = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
-                                              content)
-                    for_content = b""
-                    if bool(endfor_search):
-                        for_end = content.find(b"-!]")
-                        for_content = content[for_end + 3:
-                                              endfor_search.start()]
-                        if len(for_content) > 0:
-                            if (for_content[0] == ord("\n") or
-                                    for_content[0] == ord("\r")):
-                                if (len(for_content) > 1 and
-                                        for_content[0] == ord("\r") and
-                                        for_content[1] == ord("\n")):
-                                    for_content = for_content[1:]
-                                for_content = for_content[1:]
-                    else:
-                        print("ignis: [!- endfor -!] required after 'for' " +
-                              "loop")
-                        sys.exit(1)
-                    for_content = handle_for(header_list, content_list[1],
-                                             b" ".join(content_list[3: -2]),
-                                             content_list[-1], for_content)
-                    final_content += for_content[: endfor_search.start()]
-                else:
-                    print("ignis: incorrect 'for' loop syntax")
-                    sys.exit(1)
     final_content += handle_print(header_vars, replaced_content)
     if len(final_content) > 0:
         while final_content[-1] == ord(b"\n"):
