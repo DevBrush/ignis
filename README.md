@@ -33,3 +33,11 @@
       ignis -VTL
       ignis --port 9090 -VTL
       ignis -MV
+
+#### For Loops
+    [!- for {variable} is "value" by {sort_variable} -!]
+
+    [!- endfor -!]
+
+#### Print Statement
+    [!- print {variable} -!]
