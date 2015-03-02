@@ -378,7 +378,6 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                                 pointer + pointer_start: pointer +
                                 pointer_start + pointer_end + 3]
                             #TODO handle_if
-                            print(replaced_content)
                             tmp_for_content = (tmp_for_content.replace(
                                 replaced_content, handle_print(
                                     new_header_list[i], replaced_content)))
