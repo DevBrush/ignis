@@ -461,8 +461,11 @@ def get_header(file_path, content):
                       os.path.abspath(file_path))
             is_content_file = True
             content = content[end + 4:]
-            while content[0] == ord(b"\n"):
-                content = content[1:]
+            while len(content) > 0:
+                if content[0] == ord(b"\n"):
+                    content = content[1:]
+                else:
+                    break
             header_vars[b"@CONTENT"] = content
         else:
             sys.exit("ignis: header section in " + os.path.abspath(file_path) +
