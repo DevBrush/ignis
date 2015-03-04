@@ -229,8 +229,7 @@ def handle_files(input_files, verbose, mock_flag):
                     tmp_input_path = tmp_input_path[1:]
                 if tmp_template_path[0] == "/":
                     tmp_template_path = tmp_template_path[1:]
-                tmp_input_path = header_vars[b"@FILEPATH"][len(
-                    tmp_input_path) + 2:]
+                tmp_input_path = header_vars[b"@FILEPATH"].decode("utf-8")
                 template_path = (tmp_template_root_path + tmp_template_path)
                 template_file = open(template_path, "rb")
                 template_content = template_file.read()
@@ -291,8 +290,7 @@ def handle_files(input_files, verbose, mock_flag):
                 tmp_output_path += "/"
             if tmp_input_path[0] == "/":
                 tmp_input_path = tmp_input_path[1:]
-            tmp_input_path = header_vars[b"@FILEPATH"][len(
-                tmp_input_path) + 2:]
+            tmp_input_path = header_vars[b"@FILEPATH"].decode("utf-8")
             if not mock_flag:
                 os.makedirs(tmp_output_path + "/".join(
                     tmp_input_path.split("/")[: -1]), 0o755, True)
@@ -411,7 +409,7 @@ def handle_print(header_vars, replaced_content):
                     else:
                         sys.exit("ignis: command needed before variable " +
                               variable.decode("utf-8") + " in " +
-                              header_vars[b"@FILEPATH"])
+                              header_vars[b"@FILEPATH"].decode("utf-8"))
         x += 1
     return final_content
 
@@ -433,7 +431,11 @@ def get_header(file_path, content):
     header_vars = {}
     header_content = b""
     is_content_file = False
-    header_vars[b"@FILEPATH"] = os.path.abspath(file_path)
+    tmp_input_path = INPUT_PATH
+    if tmp_input_path[0] == "/":
+        tmp_input_path = tmp_input_path[1:]
+    header_vars[b"@FILEPATH"] = os.path.abspath(file_path)[len(
+        tmp_input_path) + 2:].encode("utf-8")
     if content.find(b"!-template-!") == 0:
         header_vars["@ISTEMPLATE"] = True
         return header_vars, is_content_file
