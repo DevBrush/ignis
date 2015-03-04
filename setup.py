@@ -13,10 +13,10 @@ setup(
     name="ignis",
     description="Console-based website building program",
     author=ignis.AUTHOR,
-    author_email="development@pariahvi.com",
+    author_email="feedback@devbrush.com",
     license="BSD",
     version=ignis.VERSION,
-    url="https://github.com/PariahVi/ignis",
+    url="https://github.com/DevBrush/ignis",
     scripts=[mainscript],
     platforms="No particular restrictions",
     classifiers=[
