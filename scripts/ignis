@@ -45,7 +45,34 @@ OUTPUT_PATH = "__website__"
 class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         path = self.translate_path(self.path)
-        if not re.search("\..*$", self.path):
+        if os.path.isdir(path):
+            if len(path) > 0:
+                if path[-1] != "/":
+                    path += "/"
+            if os.path.isfile(path[: -1] + ".html"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path[: -1] + ".html", "rb").read())
+            elif os.path.isfile(path[: -1] + ".htm"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path[: -1] + ".htm", "rb").read())
+            elif os.path.isfile(path + "index.html"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path + "index.html", "rb").read())
+            elif os.path.isfile(path + "index.htm"):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(open(path + "index.htm", "rb").read())
+            else:
+                self.send_response(404, "File not found")
+                return None
+        elif not re.search("\..*$", self.path):
             if os.path.isfile(path + ".html"):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
@@ -56,20 +83,6 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
                 self.wfile.write(open(path + ".html", "rb").read())
-            else:
-                self.send_response(404, "File not found")
-                return None
-        elif os.path.isdir(path):
-            if os.path.isfile(path + "index.html"):
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(open(path + "index.html", "rb").read())
-            elif os.path.isfile(path + "index.htm"):
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(open(path + "index.htm", "rb").read())
             else:
                 self.send_response(404, "File not found")
                 return None
@@ -216,24 +229,29 @@ def handle_files(input_files, verbose, mock_flag):
         header_vars, is_header = get_header(f, input_content)
         header_list.append((header_vars, is_header))
     for t in header_list:
-        file_content = open(t[0][b"@FILEPATH"], "rb").read()
+        file_input = INPUT_PATH
+        if len(file_input) > 0:
+            if file_input[-1] != "/":
+                file_input += "/"
+        file_content = open(file_input +
+                            t[0][b"@FILEPATH"].decode("utf8"), "rb").read()
         header_vars = t[0]
         if "@ISTEMPLATE" not in header_vars:
             if t[1]:
                 tmp_output_path = OUTPUT_PATH
-                tmp_input_path = INPUT_PATH
                 tmp_template_root_path = INPUT_PATH
                 tmp_template_path = t[0][b"%TEMPLATE"].decode("utf-8")
-                if tmp_output_path[-1] != "/":
-                    tmp_output_path += "/"
-                if tmp_template_root_path[-1] != "/":
-                    tmp_template_root_path += "/"
-                if tmp_input_path[0] == "/":
-                    tmp_input_path = tmp_input_path[1:]
-                if tmp_template_path[0] == "/":
-                    tmp_template_path = tmp_template_path[1:]
+                if len(tmp_output_path) > 0:
+                    if tmp_output_path[-1] != "/":
+                      tmp_output_path += "/"
+                if len(tmp_template_root_path) > 0:
+                    if tmp_template_root_path[-1] != "/":
+                        tmp_template_root_path += "/"
+                if len(tmp_template_path) > 0:
+                    if tmp_template_path[0] == "/":
+                        tmp_template_path = tmp_template_path[1:]
                 tmp_input_path = header_vars[b"@FILEPATH"].decode("utf-8")
-                template_path = (tmp_template_root_path + tmp_template_path)
+                template_path = tmp_template_root_path + tmp_template_path
                 template_file = open(template_path, "rb")
                 template_content = template_file.read()
                 template_content = template_content[12:]
@@ -408,8 +426,6 @@ def handle_print(header_vars, replaced_content):
                     if x > 0:
                         if content_list[x - 1] == b"print":
                             if variable in header_vars:
-                                print(header_vars)
-                                print(variable)
                                 final_content += header_vars[variable]
                     else:
                         sys.exit("ignis: command needed before variable " +
