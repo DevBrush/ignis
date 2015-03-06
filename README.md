@@ -12,6 +12,12 @@
 #### Dependencies
 - Python >= 3.0
 
+#### Install:
+    $ sudo ./INSTALL.sh
+
+#### UNINSTALL
+    $ sudo ./UNINSTALL.sh
+
 #### Usage
     $ ignis -h
     Usage: ignis [ OPTIONS ]... [ -o <path="./__website__"> ] [ <input_path="./"> ]
