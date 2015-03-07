@@ -409,6 +409,10 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
     return final_content
 
 
+def handle_if(header_list, var, value_check, if_content):
+    pass
+
+
 def handle_print(header_vars, replaced_content):
     final_content = b""
     replaced_content = replaced_content.replace(b"[!-", b"")
