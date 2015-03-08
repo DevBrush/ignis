@@ -115,7 +115,7 @@ def get_files():
     return file_list
 
 
-def handle_nesting(header_list, content, pointer):
+def handle_for_nesting(header_list, content, pointer):
     while True:
         for_exists = re.search(b"\[!-[ ]{0,}for", content[pointer:])
         endfor_exists = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
@@ -124,7 +124,7 @@ def handle_nesting(header_list, content, pointer):
             for_start = for_exists.start() + pointer
             endfor_start = endfor_exists.start() + pointer
             if for_start < endfor_start:
-                content = handle_nesting(header_list, content, pointer +
+                content = handle_for_nesting(header_list, content, pointer +
                                          for_start - pointer + 1)
             else:
                 if pointer > 0:
@@ -264,7 +264,7 @@ def handle_files(input_files, verbose, mock_flag):
                         if x == 1:
                             tmp_p_content = template_content
                         else:
-                            t[0][b"@CONTENT"] = handle_nesting(
+                            t[0][b"@CONTENT"] = handle_for_nesting(
                                 header_list, t[0][b"@CONTENT"], 0)
                             tmp_p_content = t[0][b"@CONTENT"]
                         pointer_start = tmp_p_content[pointer:].find(b"[!-")
@@ -407,6 +407,63 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                         break
                 final_content += tmp_for_content
     return final_content
+
+"""
+def handle_if_nesting(header_list, content, pointer):
+    while True:
+        for_exists = re.search(b"\[!-[ ]{0,}for", content[pointer:])
+        endfor_exists = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
+                                  content[pointer:])
+        if for_exists and endfor_exists:
+            for_start = for_exists.start() + pointer
+            endfor_start = endfor_exists.start() + pointer
+            if for_start < endfor_start:
+                content = handle_for_nesting(header_list, content, pointer +
+                                         for_start - pointer + 1)
+            else:
+                if pointer > 0:
+                    for_start = (
+                        re.search(b"\[!-[ ]{0,}for",
+                                  content[pointer - 1:]).start() +
+                        pointer)
+                for_end_exists = re.search(b"-!\]", content[for_start:])
+                for_end = for_end_exists.end()
+                if for_end < endfor_start:
+                    tmp_content = content[pointer + for_end: endfor_start]
+                    replacement_content = handle_for_string(
+                        header_list, tmp_content, content,
+                        content[for_start - 1: pointer + for_end])
+                    content = (content[: pointer - 1] +
+                               replacement_content +
+                               content[pointer + endfor_exists.end():])
+                    if pointer > 0:
+                        break
+                else:
+                    sys.exit("ignis: incorrect 'for' loop syntax")
+        elif not for_exists and not endfor_exists:
+            break
+        elif not for_exists:
+            for_start = pointer - 1
+            endfor_start = endfor_exists.start()
+            for_end_exists = re.search(b"-!\]", content[for_start:])
+            if not for_end_exists:
+                sys.exit("ignis: 'for' loop required for 'endfor' statment")
+            for_end = for_end_exists.end()
+            if for_end < endfor_start:
+                tmp_content = content[pointer + for_end: pointer +
+                                      endfor_start]
+                replacement_content = handle_for_string(
+                    header_list, tmp_content, content,
+                    content[pointer - 1: pointer + for_end - 1])
+                content = (content[:pointer - 1] +
+                           replacement_content +
+                           content[pointer + endfor_exists.end():])
+                if pointer > 0:
+                    break
+            else:
+                sys.exit("ignis: incorrect 'for' loop syntax")
+        elif not endfor_exists:
+"""
 
 
 def handle_if(header_list, var, value_check, if_content):
