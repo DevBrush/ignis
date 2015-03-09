@@ -411,19 +411,19 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
 """
 def handle_if_nesting(header_list, content, pointer):
     while True:
-        for_exists = re.search(b"\[!-[ ]{0,}for", content[pointer:])
-        endfor_exists = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
+        if_exists = re.search(b"\[!-[ ]{0,}if", content[pointer:])
+        endif_exists = re.search(b"\[!-[ ]{0,}endif[ ]{0,}-!\]",
                                   content[pointer:])
-        if for_exists and endfor_exists:
-            for_start = for_exists.start() + pointer
+        if if_exists and endif_exists:
+            if_start = if_exists.start() + pointer
             endfor_start = endfor_exists.start() + pointer
-            if for_start < endfor_start:
-                content = handle_for_nesting(header_list, content, pointer +
-                                         for_start - pointer + 1)
+            if if_start < endif_start:
+                content = handle_if_nesting(header_list, content, pointer +
+                                         if_start - pointer + 1)
             else:
                 if pointer > 0:
-                    for_start = (
-                        re.search(b"\[!-[ ]{0,}for",
+                    if_start = (
+                        re.search(b"\[!-[ ]{0,}if",
                                   content[pointer - 1:]).start() +
                         pointer)
                 for_end_exists = re.search(b"-!\]", content[for_start:])
