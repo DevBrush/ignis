@@ -456,7 +456,7 @@ def get_header(file_path, content):
     if tmp_input_path[0] == "/":
         tmp_input_path = tmp_input_path[1:]
     header_vars[b"@FILEPATH"] = os.path.abspath(file_path)[len(
-        tmp_input_path) + 2:].encode("utf-8")
+        tmp_input_path) + 1:].encode("utf-8")
     if content.find(b"!-template-!") == 0:
         header_vars["@ISTEMPLATE"] = True
         return header_vars, is_content_file
