@@ -227,14 +227,10 @@ def handle_files(input_files, verbose, mock_flag):
         if verbose:
             print(mock + "Checking " + f + " for header values")
         header_vars, is_header = get_header(f, input_content)
-        header_list.append((header_vars, is_header))
+        header_list.append((header_vars, is_header, f))
     for t in header_list:
         file_input = INPUT_PATH
-        if len(file_input) > 0:
-            if file_input[-1] != "/":
-                file_input += "/"
-        file_content = open(file_input +
-                            t[0][b"@FILEPATH"].decode("utf8"), "rb").read()
+        file_content = open(t[2], "rb").read()
         header_vars = t[0]
         if "@ISTEMPLATE" not in header_vars:
             if t[1]:
@@ -250,14 +246,15 @@ def handle_files(input_files, verbose, mock_flag):
                 if len(tmp_template_path) > 0:
                     if tmp_template_path[0] == "/":
                         tmp_template_path = tmp_template_path[1:]
-                tmp_input_path = header_vars[b"@FILEPATH"].decode("utf-8")
+                tmp_input_path = t[2][len(tmp_template_root_path) - 1: ]
                 template_path = tmp_template_root_path + tmp_template_path
                 template_file = open(template_path, "rb")
                 template_content = template_file.read()
                 template_content = template_content[12:]
                 if verbose:
-                    print(mock + "Building " + tmp_output_path +
-                          tmp_input_path)
+                    if is_header:
+                        print(mock + "Building " + tmp_output_path +
+                              tmp_input_path)
                 for x in range(2):
                     pointer = 0
                     while True:
@@ -307,11 +304,11 @@ def handle_files(input_files, verbose, mock_flag):
                 file_content = template_content
             tmp_output_path = OUTPUT_PATH
             tmp_input_path = INPUT_PATH
-            if tmp_output_path[-1] != "/":
-                tmp_output_path += "/"
-            if tmp_input_path[0] == "/":
-                tmp_input_path = tmp_input_path[1:]
-            tmp_input_path = header_vars[b"@FILEPATH"].decode("utf-8")
+            if tmp_output_path[-1] == "/":
+                tmp_output_path= tmp_output_path[: -1]
+            if tmp_input_path[0] != "/":
+                tmp_input_path += "/"
+            tmp_input_path = t[2][len(tmp_input_path):]
             if not mock_flag:
                 os.makedirs(tmp_output_path + "/".join(
                     tmp_input_path.split("/")[: -1]), 0o755, True)
@@ -518,6 +515,13 @@ def get_header(file_path, content):
         tmp_input_path = tmp_input_path[1:]
     header_vars[b"@FILEPATH"] = os.path.abspath(file_path)[len(
         tmp_input_path) + 1:].encode("utf-8")
+    if len(header_vars[b"@FILEPATH"]) > 3:
+      if len(header_vars[b"@FILEPATH"]) > 4:
+        if header_vars[b"@FILEPATH"][-5:] == b".html":
+          header_vars[b"@FILEPATH"] = header_vars[b"@FILEPATH"][: -5]
+      else:
+        if header_vars[b"@FILEPATH"][-4:] == b".htm":
+          header_vars[b"@FILEPATH"] = header_vars[b"@FILEPATH"][: -4]
     if content.find(b"!-template-!") == 0:
         header_vars["@ISTEMPLATE"] = True
         return header_vars, is_content_file
