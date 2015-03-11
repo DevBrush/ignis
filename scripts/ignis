@@ -40,6 +40,14 @@ HOST = "127.0.0.1"
 PORT = 9999
 INPUT_PATH = "."
 OUTPUT_PATH = "__website__"
+HELP_FLAG = False
+VERSION_FLAG = False
+VERBOSE_FLAG = False
+HTTP_FLAG = False
+LAN_FLAG = False
+MOCK_FLAG = False
+INCLUDE_EXTENSIONS = False
+INCLUDE_HTACCESS = False
 
 
 class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -125,7 +133,7 @@ def handle_for_nesting(header_list, content, pointer):
             endfor_start = endfor_exists.start() + pointer
             if for_start < endfor_start:
                 content = handle_for_nesting(header_list, content, pointer +
-                                         for_start - pointer + 1)
+                                             for_start - pointer + 1)
             else:
                 if pointer > 0:
                     for_start = (
@@ -213,18 +221,18 @@ def handle_for_string(header_list, for_content, content, for_string):
     return final_content
 
 
-def handle_files(input_files, verbose, mock_flag):
+def handle_files(input_files):
     mock = ""
-    if mock_flag:
+    if MOCK_FLAG:
         mock = "[MOCK] "
     header_list = []
     for f in input_files:
         input_file = open(f, "rb")
-        if verbose:
+        if VERBOSE_FLAG:
             print(mock + "Reading " + f)
         input_content = input_file.read()
         input_content = input_content.replace(b"\r\n", b"\n")
-        if verbose:
+        if VERBOSE_FLAG:
             print(mock + "Checking " + f + " for header values")
         header_vars, is_header = get_header(f, input_content)
         header_list.append((header_vars, is_header, f))
@@ -239,19 +247,19 @@ def handle_files(input_files, verbose, mock_flag):
                 tmp_template_path = t[0][b"%TEMPLATE"].decode("utf-8")
                 if len(tmp_output_path) > 0:
                     if tmp_output_path[-1] != "/":
-                      tmp_output_path += "/"
+                        tmp_output_path += "/"
                 if len(tmp_template_root_path) > 0:
                     if tmp_template_root_path[-1] != "/":
                         tmp_template_root_path += "/"
                 if len(tmp_template_path) > 0:
                     if tmp_template_path[0] == "/":
                         tmp_template_path = tmp_template_path[1:]
-                tmp_input_path = t[2][len(tmp_template_root_path) - 1: ]
+                tmp_input_path = t[2][len(tmp_template_root_path) - 1:]
                 template_path = tmp_template_root_path + tmp_template_path
                 template_file = open(template_path, "rb")
                 template_content = template_file.read()
                 template_content = template_content[12:]
-                if verbose:
+                if VERBOSE_FLAG:
                     if is_header:
                         print(mock + "Building " + tmp_output_path +
                               tmp_input_path)
@@ -305,18 +313,38 @@ def handle_files(input_files, verbose, mock_flag):
             tmp_output_path = OUTPUT_PATH
             tmp_input_path = INPUT_PATH
             if tmp_output_path[-1] == "/":
-                tmp_output_path= tmp_output_path[: -1]
+                tmp_output_path = tmp_output_path[: -1]
             if tmp_input_path[0] != "/":
                 tmp_input_path += "/"
             tmp_input_path = t[2][len(tmp_input_path):]
-            if not mock_flag:
+            if not MOCK_FLAG:
                 os.makedirs(tmp_output_path + "/".join(
                     tmp_input_path.split("/")[: -1]), 0o755, True)
                 write_file = open(tmp_output_path + tmp_input_path, "wb")
-            if verbose:
+            if VERBOSE_FLAG:
                 print(mock + "Writing " + tmp_output_path + tmp_input_path)
-            if not mock_flag:
+            if not MOCK_FLAG:
                 write_file.write(file_content)
+    if INCLUDE_HTACCESS:
+        if not MOCK_FLAG:
+            write_file = open(OUTPUT_PATH + "/.htaccess", "wb")
+        if VERBOSE_FLAG:
+            print(mock + "Writing " + OUTPUT_PATH + "/.htaccess")
+        if not MOCK_FLAG:
+            write_file.write(b"Options -Multiviews -Indexes\n\n" +
+                             b"RewriteEngine On\n" +
+                             b"RewriteBase /\n\n" +
+                             b"#Allow files and directories to have the " +
+                             b"same name\n" +
+                             b"DirectorySlash Off\n\n" +
+                             b"#Remove trailing slash\n" +
+                             b"RewriteRule ^(.+?)/$ /$1 [R=301,L]\n\n" +
+                             b"#Allow .html/.htm files to not include " +
+                             b".html/.htm (.html takes priority!)\n" +
+                             b"RewriteCond %{DOCUMENT_ROOT}/$1.html -f\n" +
+                             b"RewriteRule ^(.+?)/?$ /$1.html [L]\n" +
+                             b"RewriteCond %{DOCUMENT_ROOT}/$1.htm -f\n" +
+                             b"RewriteRule ^(.+?)/?$ /$1.htm [L]")
 
 
 def handle_for(header_list, var, value_check, sort_var, for_content):
@@ -393,7 +421,7 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                             replaced_content = tmp_for_content[
                                 pointer + pointer_start: pointer +
                                 pointer_start + pointer_end + 3]
-                            #TODO handle_if
+                            # TODO handle_if
                             tmp_for_content = (tmp_for_content.replace(
                                 replaced_content, handle_print(
                                     new_header_list[i], replaced_content)))
@@ -487,8 +515,8 @@ def handle_print(header_vars, replaced_content):
                                 final_content += header_vars[variable]
                     else:
                         sys.exit("ignis: command needed before variable " +
-                              variable.decode("utf-8") + " in " +
-                              header_vars[b"@FILEPATH"].decode("utf-8"))
+                                 variable.decode("utf-8") + " in " +
+                                 header_vars[b"@FILEPATH"].decode("utf-8"))
         x += 1
     return final_content
 
@@ -515,13 +543,14 @@ def get_header(file_path, content):
         tmp_input_path = tmp_input_path[1:]
     header_vars[b"@FILEPATH"] = os.path.abspath(file_path)[len(
         tmp_input_path) + 1:].encode("utf-8")
-    if len(header_vars[b"@FILEPATH"]) > 3:
-      if len(header_vars[b"@FILEPATH"]) > 4:
-        if header_vars[b"@FILEPATH"][-5:] == b".html":
-          header_vars[b"@FILEPATH"] = header_vars[b"@FILEPATH"][: -5]
-      else:
-        if header_vars[b"@FILEPATH"][-4:] == b".htm":
-          header_vars[b"@FILEPATH"] = header_vars[b"@FILEPATH"][: -4]
+    if not INCLUDE_EXTENSIONS:
+        if len(header_vars[b"@FILEPATH"]) > 3:
+            if len(header_vars[b"@FILEPATH"]) > 4:
+                if header_vars[b"@FILEPATH"][-5:] == b".html":
+                    header_vars[b"@FILEPATH"] = header_vars[b"@FILEPATH"][: -5]
+            else:
+                if header_vars[b"@FILEPATH"][-4:] == b".htm":
+                    header_vars[b"@FILEPATH"] = header_vars[b"@FILEPATH"][: -4]
     if content.find(b"!-template-!") == 0:
         header_vars["@ISTEMPLATE"] = True
         return header_vars, is_content_file
@@ -535,17 +564,17 @@ def get_header(file_path, content):
                     key_end = var.find(b"=")
                     if key_end < 0:
                         sys.exit("ignis: incorrectly formatted header line " +
-                              var.decode("utf-8") + " in " +
-                              os.path.abspath(file_path))
+                                 var.decode("utf-8") + " in " +
+                                 os.path.abspath(file_path))
                     if not re.match(b"^[A-Za-z0-9_-]*$", var[: key_end]):
                         if var[: key_end] != b"%TEMPLATE":
                             sys.exit("ignis: invalid header value name " +
-                                  var[: key_end].decode("utf-8") + " in " +
-                                  os.path.abspath(file_path))
+                                     var[: key_end].decode("utf-8") + " in " +
+                                     os.path.abspath(file_path))
                     header_vars[var[: key_end]] = var[key_end + 1:]
             if b"%TEMPLATE" not in header_vars:
                 sys.exit("ignis: %TEMPLATE required as a header line in " +
-                      os.path.abspath(file_path))
+                         os.path.abspath(file_path))
             is_content_file = True
             content = content[end + 4:]
             while len(content) > 0:
@@ -556,7 +585,7 @@ def get_header(file_path, content):
             header_vars[b"@CONTENT"] = content
         else:
             sys.exit("ignis: header section in " + os.path.abspath(file_path) +
-                  " must end with -!")
+                     " must end with -!")
     return header_vars, is_content_file
 
 
@@ -602,22 +631,31 @@ def help_print():
     print("Usage: ignis [ OPTIONS ]... [ -o <path=./__website__> ] " +
           "[ <input_path=\"./\"> ]\n\n" +
           "Options:\n"
-          "  -h, --help               Print Help (this message) and exit\n" +
-          "  -L, --LAN                Open test server up to local network\n"
-          "  -M, --mock               Run a mock website build\n" +
-          "  -o, --output  <path>     Output path for finished website " +
+          "  -h, --help                   Print Help (this message) and " +
+          "exit\n" +
+          "      --include-extensions     Include .html and .htm extensions " +
+          "in @FILEPATH\n" +
+          "      --include-htaccess       Include .htaccess to match ignis " +
+          "server\n" +
+          "  -L, --LAN                    Open test server up to local " +
+          "network\n" +
+          "  -M, --mock                   Run a mock website build\n" +
+          "  -o, --output  <path>         Path for finished website " +
           "(path=./__website__)\n" +
-          "  -P, --port  <port>       Port for finished website " +
+          "  -P, --port  <port>           Port for finished website " +
           "(port=9999)\n" +
-          "  -T, --test               Run test web server after build\n" +
-          "  -V, --verbose            Print verbose messages while " +
+          "  -T, --test                   Run test web server after build\n" +
+          "  -V, --verbose                Print verbose messages while " +
           "building\n"
-          "  -v, --version            Print version information and exit\n\n" +
+          "  -v, --version                Print version information and " +
+          "exit\n\n" +
           "Examples:\n" +
           "  ignis -o path/for/website path/to/files\n" +
           "  ignis --verbose -o example-site\n" +
           "  ignis -V -T -L -o example-site\n" +
           "  ignis -VTL\n" +
+          "  ignis -VT --include-extensions\n" +
+          "  ignis -TL --include-htaccess --include-extensions\n" +
           "  ignis --port 9090 -VTL\n" +
           "  ignis -MV")
 
@@ -631,29 +669,30 @@ def main():
     global PORT
     global INPUT_PATH
     global OUTPUT_PATH
-    help_flag = False
-    version_flag = False
-    verbose_flag = False
-    http_flag = False
-    lan_flag = False
-    mock_flag = False
-    verbose = False
+    global HELP_FLAG
+    global VERSION_FLAG
+    global VERBOSE_FLAG
+    global HTTP_FLAG
+    global LAN_FLAG
+    global MOCK_FLAG
+    global INCLUDE_EXTENSIONS
+    global INCLUDE_HTACCESS
     args = sys.argv[1:]
     x = 0
     while x < len(args):
         if len(args[x]) > 2 and args[x].find("--") == 0:
             if args[x][2:] == "help":
-                help_flag = True
+                HELP_FLAG = True
             elif args[x][2:] == "version":
-                version_flag = True
+                VERSION_FLAG = True
             elif args[x][2:] == "test":
-                http_flag = True
+                HTTP_FLAG = True
             elif args[x][2:] == "LAN":
-                lan_flag = True
+                LAN_FLAG = True
             elif args[x][2:] == "verbose":
-                verbose_flag = True
+                VERBOSE_FLAG = True
             elif args[x][2:] == "mock":
-                mock_flag = True
+                MOCK_FLAG = True
             elif args[x][2:] == "port":
                 if len(args) > x + 1:
                     tmp_port = args[x + 1]
@@ -663,7 +702,11 @@ def main():
                     x += 1
                 else:
                     sys.exit("ignis: no port included\nTry 'ignis " +
-                          "--help' for more information.")
+                             "--help' for more information.")
+            elif args[x][2:] == "include-extensions":
+                INCLUDE_EXTENSIONS = True
+            elif args[x][2:] == "include-htaccess":
+                INCLUDE_HTACCESS = True
             elif args[x][2:] == "output":
                 if len(args) > x + 1:
                     OUTPUT_PATH = args[x + 1]
@@ -671,25 +714,25 @@ def main():
                     break
                 else:
                     sys.exit("ignis: no output path included\nTry 'ignis " +
-                          "--help' for more information.")
+                             "--help' for more information.")
             elif args[x][2:] != "":
                 sys.exit("ignis: unrecognized option " + args[x] + "\nTry " +
-                      "'ignis --help' for more information.")
+                         "'ignis --help' for more information.")
         elif (len(args[x]) > 1 and args[x][0] == "-" and
               args[x].find("--") != 0):
             for y in args[x][1:]:
                 if y == "h":
-                    help_flag = True
+                    HELP_FLAG = True
                 elif y == "v":
-                    version_flag = True
+                    VERSION_FLAG = True
                 elif y == "T":
-                    http_flag = True
+                    HTTP_FLAG = True
                 elif y == "L":
-                    lan_flag = True
+                    LAN_FLAG = True
                 elif y == "V":
-                    verbose_flag = True
+                    VERBOSE_FLAG = True
                 elif y == "M":
-                    mock_flag = True
+                    MOCK_FLAG = True
                 elif y == "P":
                     if len(args) > x + 1:
                         tmp_port = args[x + 1]
@@ -698,22 +741,23 @@ def main():
                                 PORT = int(tmp_port)
                             else:
                                 sys.exit("ignis: invalid port number\nTry " +
-                                      "'ignis --help' for more information.")
+                                         "'ignis --help' for more " +
+                                         "information.")
                         else:
-                            sys.exit("ignis: invalid port number\nTry 'ignis " +
-                                  "--help' for more information.")
+                            sys.exit("ignis: invalid port number\nTry " +
+                                     "'ignis --help' for more information.")
                         x += 1
                     else:
                         sys.exit("ignis: no port included\nTry 'ignis " +
-                              "--help' for more information.")
+                                 "--help' for more information.")
                 elif len(args[x][1:]) == 1 and y == "o":
                     if len(args) > x + 1:
                         OUTPUT_PATH = args[x + 1]
                         x += 1
                         break
                     else:
-                        sys.exit("ignis: no output path included\nTry 'ignis " +
-                              "--help' for more information.")
+                        sys.exit("ignis: no output path included\nTry " +
+                                 "'ignis --help' for more information.")
                 else:
                     sys.exit("ignis: unrecognized option " + args[x] +
                              "\nTry 'ignis --help' for more information.")
@@ -722,38 +766,36 @@ def main():
                 INPUT_PATH = args[x]
             else:
                 sys.exit("ignis: invalid option -- '" + args[x] +
-                      "\nTry 'ignis --help' for more information.")
+                         "\nTry 'ignis --help' for more information.")
         x += 1
-    if help_flag or version_flag:
-        if help_flag:
+    if HELP_FLAG or VERSION_FLAG:
+        if HELP_FLAG:
             help_print()
         else:
             version_print()
         sys.exit(0)
-    if mock_flag:
-        if http_flag:
+    if MOCK_FLAG:
+        if HTTP_FLAG:
             sys.exit("ignis: --test must NOT be included to use mock flag\n" +
-                  "Try 'ignis --help' for more information.")
-        elif lan_flag:
+                     "Try 'ignis --help' for more information.")
+        elif LAN_FLAG:
             sys.exit("ignis: --LAN must NOT be included to use mock flag\n" +
-                  "Try 'ignis --help' for more information.")
-    if lan_flag and not http_flag:
+                     "Try 'ignis --help' for more information.")
+    if LAN_FLAG and not HTTP_FLAG:
         sys.exit("ignis: --test must be included to use LAN flag\n" +
-              "Try 'ignis --help' for more information.")
-    if verbose_flag:
-        verbose = True
+                 "Try 'ignis --help' for more information.")
     INPUT_PATH = os.path.abspath(INPUT_PATH)
     OUTPUT_PATH = os.path.abspath(OUTPUT_PATH)
     if INPUT_PATH == OUTPUT_PATH:
         sys.exit("ignis: input path and output path cannot be the same path")
     if INPUT_PATH[-1] == "/":
         INPUT_PATH = INPUT_PATH[: -1]
-    handle_files(get_files(), verbose, mock_flag)
-    if http_flag:
-        if verbose:
+    handle_files(get_files())
+    if HTTP_FLAG:
+        if VERBOSE_FLAG:
             print("")
         os.makedirs(OUTPUT_PATH, 0o755, True)
-        if lan_flag:
+        if LAN_FLAG:
             HOST = "0.0.0.0"
         handle_http(OUTPUT_PATH)
 
