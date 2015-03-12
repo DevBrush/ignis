@@ -125,7 +125,7 @@ def get_files():
 
 def handle_for_nesting(header_list, content, pointer):
     while True:
-        for_exists = re.search(b"\[!-[ ]{0,}for", content[pointer:])
+        for_exists = re.search(b"\[!-[ ]{0,}for ", content[pointer:])
         endfor_exists = re.search(b"\[!-[ ]{0,}endfor[ ]{0,}-!\]",
                                   content[pointer:])
         if for_exists and endfor_exists:
@@ -137,7 +137,7 @@ def handle_for_nesting(header_list, content, pointer):
             else:
                 if pointer > 0:
                     for_start = (
-                        re.search(b"\[!-[ ]{0,}for",
+                        re.search(b"\[!-[ ]{0,}for ",
                                   content[pointer - 1:]).start() +
                         pointer)
                 for_end_exists = re.search(b"-!\]", content[for_start:])
@@ -203,7 +203,6 @@ def handle_for_string(header_list, for_content, content, for_string):
                             content_list[1][0] == ord("{") and
                             content_list[1][-1] == ord("}")) and
                         sort_check):
-                    for_end = content.find(b"-!]")
                     if len(for_content) > 0:
                         if (for_content[0] == ord("\n") or
                                 for_content[0] == ord("\r")):
@@ -267,8 +266,14 @@ def handle_files(input_files):
                     pointer = 0
                     while True:
                         if x == 1:
+                            template_content = handle_if_nesting(
+                                t[0], template_content, 0)
+                            template_content = handle_for_nesting(
+                                header_list, template_content, 0)
                             tmp_p_content = template_content
                         else:
+                            t[0][b"@CONTENT"] = handle_if_nesting(
+                                t[0], t[0][b"@CONTENT"], 0)
                             t[0][b"@CONTENT"] = handle_for_nesting(
                                 header_list, t[0][b"@CONTENT"], 0)
                             tmp_p_content = t[0][b"@CONTENT"]
@@ -421,7 +426,6 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                             replaced_content = tmp_for_content[
                                 pointer + pointer_start: pointer +
                                 pointer_start + pointer_end + 3]
-                            # TODO handle_if
                             tmp_for_content = (tmp_for_content.replace(
                                 replaced_content, handle_print(
                                     new_header_list[i], replaced_content)))
@@ -433,66 +437,136 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                 final_content += tmp_for_content
     return final_content
 
-"""
-def handle_if_nesting(header_list, content, pointer):
+
+def handle_if_string(header_set, if_content, content, if_string):
+    final_content = b""
+    if_string = if_string.replace(b"[!-", b"")
+    if_string = if_string.replace(b"-!]", b"")
+    content_list = if_string.split(b" ")
+    content_list = list(filter(None, content_list))
+    if len(content_list) > 1:
+        if content_list[0] == b"if":
+            if len(content_list) > 3:
+                # check if correct if statement syntax
+                if ((content_list[2] == b"is" or
+                     content_list[2] == b"not") and
+                        (len(content_list[1]) > 1 and
+                            content_list[1][0] == ord("{") and
+                            content_list[1][-1] == ord("}"))):
+                    if len(if_content) > 0:
+                        if (if_content[0] == ord("\n") or
+                                if_content[0] == ord("\r")):
+                            if (len(if_content) > 1 and
+                                    if_content[0] == ord("\r") and
+                                    if_content[1] == ord("\n")):
+                                if_content = if_content[1:]
+                            if_content = if_content[1:]
+                    if_end = content.find(b"-!]")
+                    equal = True
+                    if content_list[2] == b"not":
+                        equal = False
+                    if_content = handle_if(header_set, content_list[1],
+                                           b" ".join(content_list[3:]),
+                                           if_content, equal)
+                    final_content = if_content
+                else:
+                    sys.exit("ignis: incorrect 'if' statement syntax")
+    return final_content
+
+
+def handle_if_nesting(header_set, content, pointer):
     while True:
-        if_exists = re.search(b"\[!-[ ]{0,}if", content[pointer:])
+        if_exists = re.search(b"\[!-[ ]{0,}if ", content[pointer:])
         endif_exists = re.search(b"\[!-[ ]{0,}endif[ ]{0,}-!\]",
-                                  content[pointer:])
+                                 content[pointer:])
         if if_exists and endif_exists:
             if_start = if_exists.start() + pointer
-            endfor_start = endfor_exists.start() + pointer
+            endif_start = endif_exists.start() + pointer
             if if_start < endif_start:
-                content = handle_if_nesting(header_list, content, pointer +
-                                         if_start - pointer + 1)
+                content = handle_if_nesting(header_set, content, pointer +
+                                            if_start - pointer + 1)
             else:
                 if pointer > 0:
                     if_start = (
-                        re.search(b"\[!-[ ]{0,}if",
+                        re.search(b"\[!-[ ]{0,}if ",
                                   content[pointer - 1:]).start() +
                         pointer)
-                for_end_exists = re.search(b"-!\]", content[for_start:])
-                for_end = for_end_exists.end()
-                if for_end < endfor_start:
-                    tmp_content = content[pointer + for_end: endfor_start]
-                    replacement_content = handle_for_string(
-                        header_list, tmp_content, content,
-                        content[for_start - 1: pointer + for_end])
+                if_end_exists = re.search(b"-!\]", content[if_start:])
+                if_end = if_end_exists.end()
+                if if_end < endif_start:
+                    tmp_content = content[pointer + if_end: endif_start]
+                    replacement_content = handle_if_string(
+                        header_set, tmp_content, content,
+                        content[if_start - 1: pointer + if_end])
                     content = (content[: pointer - 1] +
                                replacement_content +
-                               content[pointer + endfor_exists.end():])
+                               content[pointer + endif_exists.end():])
                     if pointer > 0:
                         break
                 else:
-                    sys.exit("ignis: incorrect 'for' loop syntax")
-        elif not for_exists and not endfor_exists:
+                    sys.exit("ignis: incorrect 'if' statement syntax")
+        elif not if_exists and not endif_exists:
             break
-        elif not for_exists:
-            for_start = pointer - 1
-            endfor_start = endfor_exists.start()
-            for_end_exists = re.search(b"-!\]", content[for_start:])
-            if not for_end_exists:
-                sys.exit("ignis: 'for' loop required for 'endfor' statment")
-            for_end = for_end_exists.end()
-            if for_end < endfor_start:
-                tmp_content = content[pointer + for_end: pointer +
-                                      endfor_start]
-                replacement_content = handle_for_string(
-                    header_list, tmp_content, content,
-                    content[pointer - 1: pointer + for_end - 1])
+        elif not if_exists:
+            if_start = pointer - 1
+            endif_start = endif_exists.start()
+            if_end_exists = re.search(b"-!\]", content[if_start:])
+            if not if_end_exists:
+                sys.exit("ignis: 'if' statement required for 'endif'")
+            if_end = if_end_exists.end()
+            if if_end < endif_start:
+                tmp_content = content[pointer + if_end: pointer +
+                                      endif_start]
+                replacement_content = handle_if_string(
+                    header_set, tmp_content, content,
+                    content[pointer - 1: pointer + if_end - 1])
                 content = (content[:pointer - 1] +
                            replacement_content +
-                           content[pointer + endfor_exists.end():])
+                           content[pointer + endif_exists.end():])
                 if pointer > 0:
                     break
             else:
-                sys.exit("ignis: incorrect 'for' loop syntax")
-        elif not endfor_exists:
-"""
+                sys.exit("ignis: incorrect 'if' statement syntax")
+        elif not endif_exists:
+            sys.exit("ignis: [!- endif -!] required after 'if' statement")
+    return content
 
 
-def handle_if(header_list, var, value_check, if_content):
-    pass
+def handle_if(header_set, var, value_check, if_content, equal):
+    final_content = b""
+    check_variable = b""
+    check_value = b""
+    error = False
+    if len(var) > 1:
+        if var[0] != ord("{") or var[-1] != ord("}"):
+            error = True
+        else:
+            check_variable = var[1: -1]
+    else:
+        error = True
+    if error:
+        sys.exit("ignis: incorrectly formatted check variable in 'if' " +
+                 "statement")
+    error = False
+    if len(value_check) > 1:
+        if value_check[0] != ord("\"") or value_check[-1] != ord("\""):
+            error = True
+        else:
+            check_value = value_check[1: -1]
+    else:
+        error = True
+    if error:
+        sys.exit("ignis: incorrectly formatted check value in 'if' " +
+                 "statement")
+    if check_variable in header_set:
+        if header_set[check_variable] == check_value:
+            if equal:
+                final_content = if_content
+        elif not equal:
+            final_content = if_content
+    elif not equal:
+        final_content = if_content
+    return final_content
 
 
 def handle_print(header_vars, replaced_content):
@@ -595,8 +669,10 @@ def handle_server(server):
 
 
 def handle_http(path):
-    os.chdir(path)
     global HOST
+    global VERBOSE_FLAG
+    global MOCK_FLAG
+    os.chdir(path)
     server = HandleTCPServer((HOST, PORT), HTTPRequestHandler)
     message = ""
     if HOST == "0.0.0.0":
@@ -620,7 +696,9 @@ def handle_http(path):
             print("")
             break
         elif ch == "r" or ch == "R":
-            handle_files(get_files(), False, False)
+            VERBOSE_FLAG = False
+            MOCK_FLAG = False
+            handle_files(get_files())
             print("\nRebuilding Website...\n")
             print("Test server at http://localhost:" + str(PORT) + message +
                   "\nPress \'R\' to rebuild website." +
