@@ -622,8 +622,10 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                 tmp_for_content = handle_if_nesting(new_header_list[i],
                                                     for_content, 0, True)
                 while True:
-                    pointer_start = tmp_for_content[pointer:].find(b"[!-")
-                    if pointer_start >= 0:
+                    pointer_start_exists = re.search(b"\[!-[ ]{0,}forprint ",
+                                                     tmp_for_content[pointer:])
+                    if pointer_start_exists:
+                        pointer_start = pointer_start_exists.start()
                         pointer_end = tmp_for_content[
                             pointer + pointer_start:].find(b"-!]")
                         if pointer_end >= 0:
@@ -750,15 +752,20 @@ def handle_variables(header_vars, header_list, replaced_content, index):
     replaced_content = replaced_content.replace(b"-!]", b"")
     content_list = replaced_content.split(b" ")
     content_list = list(filter(None, content_list))
-    if list(filter(None, replaced_content.split(b" ")))[0] == b"print":
-        final_content += handle_print(header_vars, replaced_content)
-    elif list(filter(None, replaced_content.split(b" ")))[0] == b"forif":
-        sys.exit("ignis: 'forif' statement must be inside 'for' loop")
-    elif list(filter(None, replaced_content.split(b" ")))[0] == b"endforif":
-        sys.exit("ignis: 'endforif' must be inside 'for' loop")
+    command = list(filter(None, replaced_content.split(b" ")))
+    if len(command) > 0:
+        if command[0] == b"print":
+            final_content += handle_print(header_vars, replaced_content)
+        elif command[0] == b"forif":
+            sys.exit("ignis: 'forif' statement must be inside 'for' loop")
+        elif command[0] == b"endforif":
+            sys.exit("ignis: 'endforif' must be inside 'for' loop")
+        else:
+            sys.exit("ignis: command '[!-" +
+                     replaced_content.decode("utf-8") +
+                     "-!]' is not usable")
     else:
-        sys.exit("ignis: command '[!-" + replaced_content.decode("utf-8") +
-                 "-!]' does not usable")
+        sys.exit("ignis: command needed inside [!- -!]")
     if len(final_content) > 0:
         while final_content[-1] == ord(b"\n"):
             final_content = final_content[: -1]
@@ -773,22 +780,20 @@ def handle_print(header_vars, replaced_content):
     content_list = replaced_content.split(b" ")
     content_list = list(filter(None, content_list))
     x = 0
-    while x < len(content_list):
-        if len(content_list[x]) > 1:
-            # handle variables
-            if (content_list[x][0] == ord("{") and
-                    content_list[x][-1] == ord("}")):
-                if len(content_list[x]) > 2:
-                    variable = content_list[x][1: -1]
-                    if x > 0:
-                        if content_list[x - 1] == b"print":
-                            if variable in header_vars:
-                                final_content += header_vars[variable]
-                    else:
-                        sys.exit("ignis: command needed before variable " +
-                                 variable.decode("utf-8") + " in " +
-                                 header_vars[b"@FILEPATH"].decode("utf-8"))
-        x += 1
+    if len(content_list) == 2:
+        while x < len(content_list):
+            if len(content_list[x]) > 1:
+                # handle variables in print statement
+                if (content_list[x][0] == ord("{") and
+                        content_list[x][-1] == ord("}")):
+                    if len(content_list[x]) > 2:
+                        variable = content_list[x][1: -1]
+                        if variable in header_vars:
+                            final_content += header_vars[variable]
+            x += 1
+    else:
+        sys.exit("ignis: '" + content_list[0].decode("utf-8") +
+                 "' statement is an incorrect length")
     return final_content
 
 
