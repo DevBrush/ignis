@@ -34,7 +34,7 @@ import termios
 import threading
 import tty
 
-VERSION = "1.0.0.0"
+VERSION = "1.0.3.0"
 AUTHOR = "Dev Brush Technology (http://devbrush.com)"
 HOST = "127.0.0.1"
 PORT = 9999
