@@ -1,0 +1,16 @@
+!-header
+%TEMPLATE=/templates/template.html
+title=Products
+-!
+
+[!- for {type} is "product" by {name} -!]
+  <div id="product">
+    <a href="[!- forprint {@FILEPATH} -!]">
+      <h3>[!- forprint {name} -!]</h3>
+    </a>
+    <br>
+    [!- forprint {price} -!]
+    <br><br>
+    Product Type: [!- forprint {product_type} -!]
+  </div>
+[!- endfor -!]

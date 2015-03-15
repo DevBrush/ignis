@@ -1,8 +1,6 @@
 # ignis
 
-**_ignis is created by Dev Brush Technology ([http://devbrush.com](http://devbrush.com)) <[feedback@devbrush.com](mailto:feedback@devbrush.com)> and is licensed under the BSD 2-Clause License.  Read LICENSE for more license text._**
-
-##### ignis is in development.  No stable version is available yet.
+**_ignis is created by Dev Brush Technology (http://devbrush.com) <feedback@devbrush.com> and is licensed under the BSD 2-Clause License.  Read LICENSE for more license text._**
 
 #### Platforms:
 - BSD
@@ -46,7 +44,7 @@
 
 #### For Loops:
 
-Handle *content* for every case in which a page's header has a *variable* that is *value* and then sort the cases by *sort_variable*.  If you place a negative symbol (-) in front of {sort_variable}, it will sort in reverse.  *sort_variable* will be sorted by its placement in the Unicode standard.
+Handle *`content`* for every case in which a page's header has a *`variable`* that is *`value`* and then sort the cases by *`sort_variable`*.  If you place a negative symbol (-) in front of {sort_variable}, it will sort in reverse.  *`sort_variable`* will be sorted by its placement in the Unicode standard.
 
     [!- for {variable} is "value" by {sort_variable} -!]
 		content
@@ -70,7 +68,7 @@ Examples:
 
 #### If Statements:
 
-Only handle *content* if the value of *variable* is *value* for the header the page this 'if' statement is on.  The word **not** can be used instead of **is** to see check if the value of *variable* is not *value*.
+Only handle *`content`* if the value of *`variable`* is *`value`* for the header the page this 'if' statement is on.  The word **not** can be used instead of **is** to see check if the value of *`variable`* is not *`value`*.  This differs from 'forif' commands because the value of *`variable`* is only taken from the header of the file currently being handled, not from any other file.
 
     [!- if {variable} is "value" -!]
 		content
@@ -91,7 +89,7 @@ Examples:
 
 #### Forif Statements:
 
-Only handle *content* if the value of *variable* is *value* from the header of the current iteration of a 'for' loop.  The word **not** can be used instead of **is** to see check if the value of *variable* is not *value*.
+Only handle *`content`* if the value of *`variable`* is *`value`* from the header of the current iteration of a 'for' loop.  The word **not** can be used instead of **is** to see check if the value of *`variable`* is not *`value`*.  This differs from 'if' statements because the value of *`variable`* is not taken from the header of the file currently being handled.
 
     [!- forif {variable} is "value -!]
 		content
@@ -112,9 +110,9 @@ Examples:
 		[!- endforif -!]
     [!- endfor -!]
 
-#### Print Statements:
+#### Print commands:
 
-Print the value of *variable* for the header of the page this 'print' command is on.
+Print the value of *`variable`* for the header of the file this 'print' command is on.  This differs from 'forprint' commands because the value of *`variable`* is only taken from the header of the file currently being handled, not from any other file.
 
     [!- print {variable} -!]
 
@@ -123,9 +121,9 @@ Example:
 	<!-- Will print the value of title from the current page's header -->
 	[!- print {title} -!]
 
-#### Forprint Statements:
+#### Forprint commands:
 
-Print the value of the *variable* from the header of the current 'for' loop iteration.
+Print the value of the *`variable`* from the header of the current 'for' loop iteration.  This differs from 'print' commands because the value of *`variable`* is not taken from the header of the file currently being handled.
 
 	[!- forprint {variable} -!]
 
@@ -138,15 +136,32 @@ Example:
 
 #### File Headers:
 
-The file header is included on the top of pages that are not template files that you wish to manipulate with the ignis engine.  Variables will be created with anything to the right of the first equal sign being the value of that variable.  Variables can include letters, numbers, underscores and hyphens.  The file path of the file will be stored in the variable @FILEPATH and anything after the file header will be stored in the variable @CONTENT.  %TEMPLATE is the location of the template file for the page.
+The file header is included on the top of pages that are not template files that you wish to manipulate with the **ignis** engine.  Variables will be created with anything to the right of the first equal sign being the value of that variable.  Variables can include letters, numbers, underscores and hyphens.  The file path of the file will be stored in the variable *`@FILEPATH`* and anything after the file header will be stored in the variable *`@CONTENT`*.  *`%TEMPLATE`* is the location of the template file for the page based on the root of the filesystem being the input path of the website.
+
+Any file (excluding template files) you wish to use *`[!- -!]`* commands, statements, or loops to build or modify must have a file header, even if you leave it empty.  `!-header` must be the first line of the file and `-!` must start on a new line.  *`%TEMPLATE`* is not required, but is highly suggested to use.
 
 	!-header
-	%TEMPLATE=path/to/template/file
+	%TEMPLATE=/path/to/template/file
 	variable=value
 	-!
 
+Example:
+
+	!-header
+    %TEMPLATE=/templates/template.html
+    type=product
+    -!
+
+In this example, the template file will be located at `templates/template.html` inside of the input path location specified when you run `ignis` in the command line.
+
 #### Template Header:
 
-The !-template-! header states that the file is a template and should not be written into the output path for the website.  Templates are used 
+The template header states that the file is a template and should not be written into the output path for the website, but instead should just be applied to pages that call for that template file specifically.
+
+`!-template-!` must be the first line of any template file.
 
 	!-template-!
+
+#### Example Site:
+
+This example site should be included in `/etc/ignis/example/` after installing **ignis**.  This example site is just to show how files can be formatted to work with the **ignis** engine.  To view the site at http://localhost:9999, you can use the command `$ ignis -T -o <output_path> -i /etc/ignis/example/` where *`<output_path>`* is the path were you want the website to be built.  This command will use the built-in web server in **ignis** to serve the website.

@@ -1,0 +1,50 @@
+!-template-!
+
+<!DOCTYPE html>
+<title>[!- print {title} -!]</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="/css/layout.css" type="text/css">
+<center>
+<header>
+  <a href="/">
+    Example Site
+  </a>
+  <nav>
+    <ul>
+      <li><a href="/">Home</a>
+      <li><a href="/products">Products</a>
+      <li><a href="/about">About</a>
+    </ul>
+  </nav>
+</header>
+<div id="content">
+  [!- if {type} is "product" -!]
+    <h1>[!- print {name} -!]</h1>
+    <br>
+    Price: [!- print {price} -!]
+    <br><br>
+    Product Type: [!- print {product_type} -!]
+    <br><br>
+    <br><br>
+  [!- endif -!]
+  [!- print {@CONTENT} -!]
+  [!- if {type} is "product" -!]
+    <br><br>
+    <br><br>
+    All "[!- print {product_type} -!]" Products:
+    <br><br>
+    [!- for {type} is "product" by {name} -!]
+      [!- if {product_type} is "Type A" -!]
+        [!- forif {product_type} is "Type A" -!]
+          <a href="[!- forprint {@FILEPATH} -!]">[!- forprint {title} -!]</a>
+        [!- endforif -!]
+      [!- endif -!]
+      [!- if {product_type} is "Type B" -!]
+        [!- forif {product_type} is "Type B" -!]
+          <a href="[!- forprint {@FILEPATH} -!]">[!- forprint {title} -!]</a>
+        [!- endforif -!]
+      [!- endif -!]
+    [!- endfor -!]
+  [!- endif -!]
+</div>

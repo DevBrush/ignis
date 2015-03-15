@@ -1,0 +1,58 @@
+body {
+  margin: 0;
+  background-color: #ddd;
+}
+
+a {
+  outline: none;
+}
+
+h1,
+h3 {
+  margin: 0;
+}
+
+header {
+  width: 100%;
+  height: 48px;
+  background-color: #444;
+}
+
+header a {
+  color: #ddd;
+  text-decoration: none;
+}
+
+header > a {
+  float: left;
+  margin-left: 16px;
+  font-weight: bold;
+  line-height: 48px;
+}
+
+nav {
+  float: right;
+  height: 48px;
+}
+
+nav ul {
+  padding: 0;
+}
+
+nav li {
+  display: inline-block;
+  margin-right: 16px;
+  list-style-type: none;
+}
+
+#content {
+  padding: 16px;
+}
+
+#product {
+  display: inline-block;
+  margin: 16px 4px;
+  padding: 32px;
+  min-width: 256px;
+  background-color: #ccc;
+}

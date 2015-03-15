@@ -221,9 +221,6 @@ def get_header(file_path, content):
                                      var[: key_end].decode("utf-8") + " in " +
                                      os.path.abspath(file_path))
                     header_vars[var[: key_end]] = var[key_end + 1:]
-            if b"%TEMPLATE" not in header_vars:
-                sys.exit("ignis: %TEMPLATE required as a header line in " +
-                         os.path.abspath(file_path))
             is_content_file = True
             content = content[end + 4:]
             while len(content) > 0:
@@ -262,21 +259,24 @@ def handle_files(input_files):
             if t[1]:
                 tmp_output_path = OUTPUT_PATH
                 tmp_template_root_path = INPUT_PATH
-                tmp_template_path = t[0][b"%TEMPLATE"].decode("utf-8")
-                if len(tmp_output_path) > 0:
-                    if tmp_output_path[-1] != "/":
-                        tmp_output_path += "/"
-                if len(tmp_template_root_path) > 0:
-                    if tmp_template_root_path[-1] != "/":
-                        tmp_template_root_path += "/"
-                if len(tmp_template_path) > 0:
-                    if tmp_template_path[0] == "/":
-                        tmp_template_path = tmp_template_path[1:]
-                tmp_input_path = t[2][len(tmp_template_root_path) - 1:]
-                template_path = tmp_template_root_path + tmp_template_path
-                template_file = open(template_path, "rb")
-                template_content = template_file.read()
-                template_content = template_content[12:]
+                if b"%TEMPLATE" in t[0]:
+                    tmp_template_path = t[0][b"%TEMPLATE"].decode("utf-8")
+                    if len(tmp_output_path) > 0:
+                        if tmp_output_path[-1] != "/":
+                            tmp_output_path += "/"
+                    if len(tmp_template_root_path) > 0:
+                        if tmp_template_root_path[-1] != "/":
+                            tmp_template_root_path += "/"
+                    if len(tmp_template_path) > 0:
+                        if tmp_template_path[0] == "/":
+                            tmp_template_path = tmp_template_path[1:]
+                    tmp_input_path = t[2][len(tmp_template_root_path) - 1:]
+                    template_path = tmp_template_root_path + tmp_template_path
+                    template_file = open(template_path, "rb")
+                    template_content = template_file.read()
+                    template_content = template_content[12:]
+                else:
+                    template_content = b"[!- print {@CONTENT} -!]"
                 if VERBOSE_FLAG:
                     if is_header:
                         print(mock + "Building " + tmp_output_path +
@@ -317,7 +317,7 @@ def handle_files(input_files):
                                     template_content = tmp_p_content
                                 else:
                                     t[0][b"@CONTENT"] = tmp_p_content
-                                pointer += pointer_start + pointer_end + 3
+                                pointer += pointer_start + 1
                             else:
                                 break
                         else:
@@ -635,7 +635,7 @@ def handle_for(header_list, var, value_check, sort_var, for_content):
                             tmp_for_content = (tmp_for_content.replace(
                                 replaced_content, handle_print(
                                     new_header_list[i], replaced_content)))
-                            pointer += pointer_start + pointer_end + 3
+                            pointer += pointer_start + 1
                         else:
                             break
                     else:
@@ -761,14 +761,19 @@ def handle_variables(header_vars, header_list, replaced_content, index):
         elif command[0] == b"endforif":
             sys.exit("ignis: 'endforif' must be inside 'for' loop")
         else:
+            print(replaced_content)
+            print()
+            print()
             sys.exit("ignis: command '[!-" +
                      replaced_content.decode("utf-8") +
                      "-!]' is not usable")
     else:
         sys.exit("ignis: command needed inside [!- -!]")
-    if len(final_content) > 0:
-        while final_content[-1] == ord(b"\n"):
+    while len(final_content) > 0:
+        if final_content[-1] == ord(b"\n"):
             final_content = final_content[: -1]
+        else:
+            break
     return final_content
 
 
