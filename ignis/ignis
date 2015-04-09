@@ -34,7 +34,7 @@ import termios
 import threading
 import tty
 
-VERSION = "1.0.3.0"
+VERSION = "1.0.3.1"
 AUTHOR = "Dev Brush Technology (http://devbrush.com)"
 HOST = "127.0.0.1"
 PORT = 9999
@@ -761,9 +761,6 @@ def handle_variables(header_vars, header_list, replaced_content, index):
         elif command[0] == b"endforif":
             sys.exit("ignis: 'endforif' must be inside 'for' loop")
         else:
-            print(replaced_content)
-            print()
-            print()
             sys.exit("ignis: command '[!-" +
                      replaced_content.decode("utf-8") +
                      "-!]' is not usable")

@@ -2,12 +2,13 @@ import imp
 import sys
 from distutils.core import setup
 
-ignis = imp.load_source("", "scripts/ignis")
+ignis = imp.load_source("", "ignis/ignis")
 
-mainscript = "scripts/ignis"
+mainscript = "ignis/ignis"
+program_name = "ignis"
 
 if sys.version_info < (3, 0, 0):
-    print(mainscript + " requires Python 3")
+    print(program_name + " requires Python 3")
 
 setup(
     name="ignis",
