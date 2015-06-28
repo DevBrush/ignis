@@ -47,67 +47,67 @@
 Handle *`content`* for every case in which a page's header has a *`variable`* that is *`value`* and then sort the cases by *`sort_variable`*.  If you place a negative symbol (-) in front of {sort_variable}, it will sort in reverse.  *`sort_variable`* will be sorted by its placement in the Unicode standard.
 
     [!- for {variable} is "value" by {sort_variable} -!]
-		content
+      content
     [!- endfor -!]
 
 Examples:
 
-	<!-- Sort products by price (Low to High) -->
-	[!- for {type} is "product" by {price} -!]
-		[!- forprint {title} -!]
-        <br><br>
-        [!- forprint {price} -!]
-	[!- endfor -!]
+    <!-- Sort products by price (Low to High) -->
+    [!- for {type} is "product" by {price} -!]
+      [!- forprint {title} -!]
+      <br><br>
+      [!- forprint {price} -!]
+    [!- endfor -!]
 
-	<!-- Sort products by price (High to Low) -->
-	[!- for {type} is "product" by -{price} -!]
-		[!- forprint {title} -!]
-        <br><br>
-        [!- forprint {price} -!]
-	[!- endfor -!]
+    <!-- Sort products by price (High to Low) -->
+    [!- for {type} is "product" by -{price} -!]
+      [!- forprint {title} -!]
+      <br><br>
+      [!- forprint {price} -!]
+    [!- endfor -!]
 
 #### If Statements:
 
 Only handle *`content`* if the value of *`variable`* is *`value`* for the header the page this 'if' statement is on.  The word **not** can be used instead of **is** to see check if the value of *`variable`* is not *`value`*.  This differs from 'forif' commands because the value of *`variable`* is only taken from the header of the file currently being handled, not from any other file.
 
     [!- if {variable} is "value" -!]
-		content
+      content
     [!- endif -!]
 
 Examples:
 
-	<!-- Check if the value of type is product -->
-	[!- if {type} is "product" -!]
-		This is a product and it costs:
-        [!- print {price} -!]
-	[!- endif -!]
+    <!-- Check if the value of type is product -->
+    [!- if {type} is "product" -!]
+      This is a product and it costs:
+      [!- print {price} -!]
+    [!- endif -!]
 
-	<!-- Check if the value of type is not product -->
-	[!- if {type} not "product" -!]
-		This is not a product
-	[!- endif -!]
+    <!-- Check if the value of type is not product -->
+    [!- if {type} not "product" -!]
+      This is not a product
+    [!- endif -!]
 
 #### Forif Statements:
 
 Only handle *`content`* if the value of *`variable`* is *`value`* from the header of the current iteration of a 'for' loop.  The word **not** can be used instead of **is** to see check if the value of *`variable`* is not *`value`*.  This differs from 'if' statements because the value of *`variable`* is not taken from the header of the file currently being handled.
 
     [!- forif {variable} is "value -!]
-		content
+      content
     [!- endforif -!]
 
 Examples:
 
-	[!- for {date} is "2015-12-31" by {title} -!]
-		<!-- Check if the value of type in the current iteration is product -->
-		[!- forif {type} is "product" -!]
-			This is a product and it costs:
-    	    [!- print {price} -!]
-		[!- endforif -!]
+    [!- for {date} is "2015-12-31" by {title} -!]
+      <!-- Check if the value of type in the current iteration is product -->
+      [!- forif {type} is "product" -!]
+        This is a product and it costs:
+        [!- print {price} -!]
+      [!- endforif -!]
 
-		<!-- Check if the value of type in the current iteration is not product -->
-		[!- forif {type} not "product" -!]
-			This is not a product
-		[!- endforif -!]
+      <!-- Check if the value of type in the current iteration is not product -->
+      [!- forif {type} not "product" -!]
+        This is not a product
+      [!- endforif -!]
     [!- endfor -!]
 
 #### Print commands:
@@ -118,21 +118,21 @@ Print the value of *`variable`* for the header of the file this 'print' command 
 
 Example:
 
-	<!-- Will print the value of title from the current page's header -->
-	[!- print {title} -!]
+    <!-- Will print the value of title from the current page's header -->
+    [!- print {title} -!]
 
 #### Forprint commands:
 
 Print the value of the *`variable`* from the header of the current 'for' loop iteration.  This differs from 'print' commands because the value of *`variable`* is not taken from the header of the file currently being handled.
 
-	[!- forprint {variable} -!]
+    [!- forprint {variable} -!]
 
 Example:
 
-	[!- for {type} is "product" by -{price} -!]
-		<!-- Will print the value of title from the current iteration's header -->
-    	[!- forprint {title} -!]
-	[!- endfor -!]
+    [!- for {type} is "product" by -{price} -!]
+      <!-- Will print the value of title from the current iteration's header -->
+      [!- forprint {title} -!]
+    [!- endfor -!]
 
 #### File Headers:
 
@@ -140,14 +140,14 @@ The file header is included on the top of pages that are not template files that
 
 Any file (excluding template files) you wish to use *`[!- -!]`* commands, statements, or loops to build or modify must have a file header, even if you leave it empty.  `!-header` must be the first line of the file and `-!` must start on a new line.  *`%TEMPLATE`* is not required, but is highly suggested to use.
 
-	!-header
-	%TEMPLATE=/path/to/template/file
-	variable=value
-	-!
+    !-header
+    %TEMPLATE=/path/to/template/file
+    variable=value
+    -!
 
 Example:
 
-	!-header
+    !-header
     %TEMPLATE=/templates/template.html
     type=product
     -!
@@ -160,7 +160,7 @@ The template header states that the file is a template and should not be written
 
 `!-template-!` must be the first line of any template file.
 
-	!-template-!
+    !-template-!
 
 #### Example Site:
 
