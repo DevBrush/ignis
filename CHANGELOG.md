@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 1.0.3.2 - 2016-06-10
+### Changed
+- "Dev Brush Technology" credits to "Vi Grey" credits in all files
+- Modified website and email in files
+- Added 2016 to credits
+
 ## 1.0.3.1 - 2015-04-09
 ### Added
 - program_name variable to setup.py

@@ -14,7 +14,7 @@ setup(
     name="ignis",
     description="Console-based website building program",
     author=ignis.AUTHOR,
-    author_email="feedback@devbrush.com",
+    author_email="vi@vigrey.com",
     license="BSD",
     version=ignis.VERSION,
     url="https://github.com/DevBrush/ignis",

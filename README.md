@@ -1,6 +1,6 @@
 # ignis
 
-**_ignis is created by Dev Brush Technology (http://devbrush.com) <feedback@devbrush.com> and is licensed under the BSD 2-Clause License.  Read LICENSE for more license text._**
+**_ignis is created by Vi Grey (https://vigrey.com) <vi@vigrey.com> and is licensed under the BSD 2-Clause License.  Read LICENSE for more license text._**
 
 #### Platforms:
 - BSD
