@@ -17,7 +17,7 @@ setup(
     author_email="vi@vigrey.com",
     license="BSD",
     version=ignis.VERSION,
-    url="https://github.com/DevBrush/ignis",
+    url="https://github.com/PawnTakesQueen/ignis",
     scripts=[mainscript],
     platforms="No particular restrictions",
     classifiers=[
